@@ -9,10 +9,12 @@ import { BaseErrorBoundary } from "@/components/base";
 
 import ProxiesSvg from "@/assets/image/itemicon/proxies.svg?react";
 import ProfilesSvg from "@/assets/image/itemicon/profiles.svg?react";
+import ProfilesSvg2 from "@/assets/image/itemicon/profiles2.svg?react";
 import ConnectionsSvg from "@/assets/image/itemicon/connections.svg?react";
 import RulesSvg from "@/assets/image/itemicon/rules.svg?react";
 import LogsSvg from "@/assets/image/itemicon/logs.svg?react";
 import TestSvg from "@/assets/image/itemicon/test.svg?react";
+import TestSvg2 from "@/assets/image/itemicon/test2.svg?react";
 import SettingsSvg from "@/assets/image/itemicon/settings.svg?react";
 
 import WifiRoundedIcon from "@mui/icons-material/WifiRounded";
@@ -33,7 +35,7 @@ export const routers = [
   {
     label: "Label-Profiles",
     path: "/profile",
-    icon: [<DnsRoundedIcon />, <ProfilesSvg />],
+    icon: [<ProfilesSvg2 />, <ProfilesSvg />],
     element: <ProfilesPage />,
   },
   {
@@ -57,7 +59,7 @@ export const routers = [
   {
     label: "Label-Test",
     path: "/test",
-    icon: [<WifiTetheringRoundedIcon />, <TestSvg />],
+    icon: [<TestSvg2 />, <TestSvg />],
     element: <TestPage />,
   },
   {
