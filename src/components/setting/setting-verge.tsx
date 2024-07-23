@@ -1,14 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/api/dialog";
-import {
-  Button,
-  MenuItem,
-  Select,
-  Input,
-  Typography,
-  Box,
-} from "@mui/material";
+import { Button, MenuItem, Select, Input, Typography } from "@mui/material";
 import {
   exitApp,
   openAppDir,
@@ -256,7 +249,7 @@ const SettingVerge = ({ onError }: Props) => {
 
       <SettingItem onClick={openLogsDir} label={t("Open Logs Dir")} />
 
-      <SettingItem onClick={onCheckUpdate} label={t("Check for Updates")} />
+      {/* <SettingItem onClick={onCheckUpdate} label={t("Check for Updates")} /> */}
 
       <SettingItem onClick={openDevTools} label={t("Open Dev Tools")} />
 
@@ -267,9 +260,9 @@ const SettingVerge = ({ onError }: Props) => {
         label={t("Exit")}
       />
 
-      <SettingItem label={t("Verge Version")}>
+      {/* <SettingItem label={t("Verge Version")}>
         <Typography sx={{ py: "7px", pr: 1 }}>v{version}</Typography>
-      </SettingItem>
+      </SettingItem> */}
     </SettingList>
   );
 };

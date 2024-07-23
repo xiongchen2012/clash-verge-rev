@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { TextField, Select, MenuItem, Typography } from "@mui/material";
+import { TextField, Select, MenuItem, Typography, Link } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 import {
   SettingsRounded,
@@ -59,6 +60,9 @@ const SettingClash = ({ onError }: Props) => {
       Notice.error(err?.response.data.message || err.toString());
     }
   };
+
+  // 跳由
+  const navigate = useNavigate();
 
   return (
     <SettingList title={t("Clash Setting")}>
@@ -123,6 +127,12 @@ const SettingClash = ({ onError }: Props) => {
             <MenuItem value="silent">Silent</MenuItem>
           </Select>
         </GuardState>
+        <Link
+          style={{ fontSize: 12, marginLeft: "4px", cursor: "pointer" }}
+          onClick={() => navigate("/logs")}
+        >
+          {t("View Log")}
+        </Link>
       </SettingItem>
 
       <SettingItem

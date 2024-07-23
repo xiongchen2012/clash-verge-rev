@@ -5,6 +5,7 @@ import { useCustomTheme } from "@/components/layout/use-custom-theme";
 
 interface Props {
   title?: React.ReactNode; // the page title
+  subTitle?: React.ReactNode; // the page title
   header?: React.ReactNode; // something behind title
   contentStyle?: React.CSSProperties;
   children?: ReactNode;
@@ -12,7 +13,7 @@ interface Props {
 }
 
 export const BasePage: React.FC<Props> = (props) => {
-  const { title, header, contentStyle, full, children } = props;
+  const { title, header, contentStyle, full, children, subTitle } = props;
   const { theme } = useCustomTheme();
 
   const isDark = theme.palette.mode === "dark";
@@ -26,6 +27,7 @@ export const BasePage: React.FC<Props> = (props) => {
             data-tauri-drag-region="true"
           >
             {title}
+            {subTitle}
           </Typography>
 
           {header}

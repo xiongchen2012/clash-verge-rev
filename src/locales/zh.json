@@ -17,7 +17,7 @@
   "Enable": "启用",
   "Disable": "禁用",
   "Label-Proxies": "代 理",
-  "Label-Profiles": "订 阅",
+  "Label-Profiles": "机 场",
   "Label-Connections": "连 接",
   "Label-Rules": "规 则",
   "Label-Logs": "日 志",
@@ -367,5 +367,6 @@
   "Clash Core Restarted": "已重启 Clash 内核",
   "Switched to _clash Core": "已切换至 {{core}} 内核",
   "GeoData Updated": "已更新 GeoData",
-  "Currently on the Latest Version": "当前已是最新版本"
+  "Currently on the Latest Version": "当前已是最新版本",
+  "View Log": "查看"
 }

@@ -27,6 +27,7 @@ import apple from "@/assets/image/test/apple.svg?raw";
 import github from "@/assets/image/test/github.svg?raw";
 import google from "@/assets/image/test/google.svg?raw";
 import youtube from "@/assets/image/test/youtube.svg?raw";
+import twitter from "@/assets/image/test/twitter.svg?raw";
 
 const TestPage = () => {
   const { t } = useTranslation();
@@ -63,6 +64,12 @@ const TestPage = () => {
       name: "Youtube",
       url: "https://www.youtube.com",
       icon: youtube,
+    },
+    {
+      uid: nanoid(),
+      name: "Twitter",
+      url: "https://www.x.com",
+      icon: twitter,
     },
   ];
 
@@ -166,6 +173,7 @@ const TestPage = () => {
                 {testList.map((item) => (
                   <Grid item xs={6} sm={4} md={3} lg={2} key={item.uid}>
                     <TestItem
+                      key={item.uid}
                       id={item.uid}
                       itemData={item}
                       onEdit={() => viewerRef.current?.edit(item)}

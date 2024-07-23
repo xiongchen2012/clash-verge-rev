@@ -161,17 +161,19 @@ const Layout = () => {
             </div>
 
             <List className="the-menu">
-              {routers.map((router) => (
-                <LayoutItem
-                  key={router.label}
-                  to={router.path}
-                  icon={router.icon}
-                >
-                  {t(router.label)}
-                </LayoutItem>
-              ))}
+              {/* 不显示日志入口 */}
+              {routers
+                .filter((router) => router.path !== "/logs")
+                .map((router) => (
+                  <LayoutItem
+                    key={router.label}
+                    to={router.path}
+                    icon={router.icon}
+                  >
+                    {t(router.label)}
+                  </LayoutItem>
+                ))}
             </List>
-
             <div className="the-traffic">
               <LayoutTraffic />
             </div>
