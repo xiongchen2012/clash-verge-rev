@@ -5,7 +5,7 @@ import { SWRConfig, mutate } from "swr";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useRoutes } from "react-router-dom";
-import { List, Paper, ThemeProvider, SvgIcon } from "@mui/material";
+import { List, Paper, ThemeProvider, SvgIcon, Avatar } from "@mui/material";
 import { listen } from "@tauri-apps/api/event";
 import { appWindow } from "@tauri-apps/api/window";
 import { routers } from "./_routers";
@@ -14,6 +14,7 @@ import { useVerge } from "@/hooks/use-verge";
 import LogoSvg from "@/assets/image/logo.svg?react";
 import iconLight from "@/assets/image/icon_light.svg?react";
 import iconDark from "@/assets/image/icon_dark.svg?react";
+import avatar from "@/assets/image/avatar.jpg?url";
 import { useThemeMode } from "@/services/states";
 import { Notice } from "@/components/base";
 import { LayoutItem } from "@/components/layout/layout-item";
@@ -144,8 +145,8 @@ const Layout = () => {
                   justifyContent: "space-between",
                 }}
               >
-                <SvgIcon
-                  component={isDark ? iconDark : iconLight}
+                <Avatar
+                  src={avatar}
                   style={{
                     height: "36px",
                     width: "36px",
@@ -153,7 +154,6 @@ const Layout = () => {
                     marginRight: "5px",
                     marginLeft: "-3px",
                   }}
-                  inheritViewBox
                 />
                 <LogoSvg fill={isDark ? "white" : "black"} />
               </div>

@@ -8,14 +8,18 @@ import RulesPage from "./rules";
 import { BaseErrorBoundary } from "@/components/base";
 
 import ProxiesSvg from "@/assets/image/itemicon/proxies.svg?react";
+import ProxiesSvg2 from "@/assets/image/itemicon/proxies2.svg?react";
 import ProfilesSvg from "@/assets/image/itemicon/profiles.svg?react";
 import ProfilesSvg2 from "@/assets/image/itemicon/profiles2.svg?react";
 import ConnectionsSvg from "@/assets/image/itemicon/connections.svg?react";
+import ConnectionsSvg2 from "@/assets/image/itemicon/connections2.svg?react";
 import RulesSvg from "@/assets/image/itemicon/rules.svg?react";
+import RulesSvg2 from "@/assets/image/itemicon/rules2.svg?react";
 import LogsSvg from "@/assets/image/itemicon/logs.svg?react";
 import TestSvg from "@/assets/image/itemicon/test.svg?react";
 import TestSvg2 from "@/assets/image/itemicon/test2.svg?react";
 import SettingsSvg from "@/assets/image/itemicon/settings.svg?react";
+import SettingsSvg2 from "@/assets/image/itemicon/settings2.svg?react";
 
 import WifiRoundedIcon from "@mui/icons-material/WifiRounded";
 import DnsRoundedIcon from "@mui/icons-material/DnsRounded";
@@ -29,7 +33,7 @@ export const routers = [
   {
     label: "Label-Proxies",
     path: "/",
-    icon: [<WifiRoundedIcon />, <ProxiesSvg />],
+    icon: [<ProxiesSvg2 />, <ProxiesSvg />],
     element: <ProxiesPage />,
   },
   {
@@ -41,13 +45,13 @@ export const routers = [
   {
     label: "Label-Connections",
     path: "/connections",
-    icon: [<LanguageRoundedIcon />, <ConnectionsSvg />],
+    icon: [<ConnectionsSvg2 />, <ConnectionsSvg />],
     element: <ConnectionsPage />,
   },
   {
     label: "Label-Rules",
     path: "/rules",
-    icon: [<ForkRightRoundedIcon />, <RulesSvg />],
+    icon: [<RulesSvg2 />, <RulesSvg />],
     element: <RulesPage />,
   },
   {
@@ -65,7 +69,7 @@ export const routers = [
   {
     label: "Label-Settings",
     path: "/settings",
-    icon: [<SettingsRoundedIcon />, <SettingsSvg />],
+    icon: [<SettingsSvg2 />, <SettingsSvg />],
     element: <SettingsPage />,
   },
 ].map((router) => ({
