@@ -10,9 +10,9 @@ import { useTranslation } from "react-i18next";
 import { BasePage, DialogRef, Notice } from "@/components/base";
 import {
   GitHub,
-  AirplanemodeActiveOutlined,
   Telegram,
   RocketLaunchOutlined,
+  HelpOutlineOutlined,
 } from "@mui/icons-material";
 import { openWebUrl } from "@/services/cmds";
 import SettingVerge from "@/components/setting/setting-verge";
@@ -111,7 +111,7 @@ const SettingPage = () => {
               title={t("Manual")}
               onClick={toGithubDoc}
             >
-              <AirplanemodeActiveOutlined fontSize="inherit" />
+              <HelpOutlineOutlined fontSize="inherit" />
             </IconButton>
           </ButtonGroup>
         }
