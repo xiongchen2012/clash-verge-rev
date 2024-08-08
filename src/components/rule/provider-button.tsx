@@ -14,7 +14,7 @@ import {
   Divider,
   keyframes,
 } from "@mui/material";
-import { RefreshRounded } from "@mui/icons-material";
+import { CloudSyncOutlined } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { getRuleProviders, ruleProviderUpdate } from "@/services/api";
 import { BaseDialog } from "../base";
@@ -102,8 +102,8 @@ export const ProviderButton = () => {
                 <ListItem
                   sx={{
                     p: 0,
-                    borderRadius: "10px",
-                    border: "solid 2px var(--divider-color)",
+                    borderRadius: "4px",
+                    border: "solid 1px #ddd",
                     mb: 1,
                   }}
                   key={key}
@@ -151,7 +151,7 @@ export const ProviderButton = () => {
                         : "none",
                     }}
                   >
-                    <RefreshRounded />
+                    <CloudSyncOutlined />
                   </IconButton>
                 </ListItem>
               </>
@@ -165,13 +165,12 @@ export const ProviderButton = () => {
 const TypeBox = styled(Box)(({ theme }) => ({
   display: "inline-block",
   border: "1px solid #ccc",
-  borderColor: alpha(theme.palette.secondary.main, 0.5),
-  color: alpha(theme.palette.secondary.main, 0.8),
+  borderColor: alpha(theme.palette.success.main, 0.5),
+  color: alpha(theme.palette.success.main, 0.8),
+  backgroundColor: alpha(theme.palette.success.main, 0.05),
   borderRadius: 4,
-  fontSize: 10,
-  marginRight: "4px",
-  padding: "0 2px",
-  lineHeight: 1.25,
+  fontSize: 11,
+  padding: "0px 4px",
 }));
 
 const StyledTypeBox = styled(Box)(({ theme }) => ({
@@ -183,5 +182,5 @@ const StyledTypeBox = styled(Box)(({ theme }) => ({
   fontSize: 10,
   marginRight: "4px",
   padding: "0 2px",
-  lineHeight: 1.25,
+  // lineHeight: 1.25,
 }));
