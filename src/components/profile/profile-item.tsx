@@ -15,7 +15,7 @@ import {
   Menu,
   CircularProgress,
 } from "@mui/material";
-import { RefreshRounded, DragIndicatorRounded } from "@mui/icons-material";
+import { RefreshRounded, AirplanemodeActive } from "@mui/icons-material";
 import { useLoadingCache, useSetLoadingCache } from "@/services/states";
 import {
   viewProfile,
@@ -321,6 +321,7 @@ export const ProfileItem = (props: Props) => {
           setAnchorEl(event.currentTarget);
           event.preventDefault();
         }}
+        // sx={{ backgroundImage: 'linear-gradient(120deg,#fdfbfb 0%, #ebedee 100%)'} }
       >
         {activating && (
           <Box
@@ -348,11 +349,11 @@ export const ProfileItem = (props: Props) => {
               {...attributes}
               {...listeners}
             >
-              <DragIndicatorRounded
+              <AirplanemodeActive
                 sx={[
-                  { cursor: "move", marginLeft: "-6px" },
-                  ({ palette: { text } }) => {
-                    return { color: text.primary };
+                  { cursor: "cursor", marginLeft: "-6px", fontSize: "20px" },
+                  ({ palette: { success } }) => {
+                    return { color: success.main };
                   },
                 ]}
               />
@@ -361,6 +362,7 @@ export const ProfileItem = (props: Props) => {
             <Typography
               width="calc(100% - 36px)"
               sx={{ fontSize: "18px", fontWeight: "600", lineHeight: "26px" }}
+              style={{ color: "#357a38" }}
               variant="h6"
               component="h2"
               noWrap
