@@ -13,10 +13,10 @@ use tauri::{
 pub struct Tray {}
 
 impl Tray {
-    pub fn tray_menu(app_handle: &AppHandle) -> SystemTrayMenu {
+    pub fn tray_menu(_app_handle: &AppHandle) -> SystemTrayMenu {
         let zh = { Config::verge().latest().language == Some("zh".into()) };
 
-        let version = app_handle.package_info().version.to_string();
+        // let version = app_handle.package_info().version.to_string();
 
         macro_rules! t {
             ($en: expr, $zh: expr) => {
@@ -72,21 +72,21 @@ impl Tray {
                         t!("Logs Dir", "日志目录"),
                     )),
             ))
-            .add_submenu(SystemTraySubmenu::new(
-                t!("More", "更多"),
-                SystemTrayMenu::new()
-                    .add_item(CustomMenuItem::new(
-                        "restart_clash",
-                        t!("Restart Clash", "重启 Clash"),
-                    ))
-                    .add_item(CustomMenuItem::new(
-                        "restart_app",
-                        t!("Restart App", "重启应用"),
-                    ))
-                    .add_item(
-                        CustomMenuItem::new("app_version", format!("Version {version}")).disabled(),
-                    ),
+            .add_item(CustomMenuItem::new(
+                "restart_all",
+                t!("Restart", "重启解决99%问题"),
             ))
+            // .add_item(CustomMenuItem::new(
+            //     "restart_app",
+            //     t!("Restart App", "重启应用"),
+            // ))
+            // .add_item(CustomMenuItem::new(
+            //     "restart_clash",
+            //     t!("Restart Clash", "重启 Clash"),
+            // ))
+            // .add_item(
+            //     CustomMenuItem::new("app_version", format!("Version {version}")).disabled(),
+            // )
             .add_native_item(SystemTrayMenuItem::Separator)
             .add_item(CustomMenuItem::new("quit", t!("Quit", "退出")))
     }
@@ -339,6 +339,10 @@ impl Tray {
                 "open_logs_dir" => crate::log_err!(cmds::open_logs_dir()),
                 "restart_clash" => feat::restart_clash_core(),
                 "restart_app" => api::process::restart(&app_handle.env()),
+                "restart_all" => {
+                    feat::restart_clash_core();
+                    api::process::restart(&app_handle.env());
+                },
                 "quit" => cmds::exit_app(app_handle.clone()),
 
                 _ => {}

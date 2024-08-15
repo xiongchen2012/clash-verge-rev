@@ -2,7 +2,7 @@ import { alpha, Box, styled } from "@mui/material";
 
 export const ProfileBox = styled(Box)(
   ({ theme, "aria-selected": selected }) => {
-    const { mode, primary, text } = theme.palette;
+    const { mode, primary, success, text } = theme.palette;
     const key = `${mode}-${!!selected}`;
 
     const backgroundColor = mode === "light" ? "#ffffff" : "#282A36";
@@ -23,7 +23,7 @@ export const ProfileBox = styled(Box)(
 
     const borderSelect = {
       "light-true": {
-        borderLeft: `3px solid ${primary.main}`,
+        borderLeft: `3px solid ${success.main}`,
         width: `calc(100% + 3px)`,
         marginLeft: `-3px`,
       },
