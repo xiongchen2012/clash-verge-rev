@@ -31,28 +31,28 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 
 export const routers = [
   {
-    label: "Label-Proxies",
-    path: "/",
-    icon: [<ProxiesSvg2 />, <ProxiesSvg />],
-    element: <ProxiesPage />,
-  },
-  {
     label: "Label-Profiles",
     path: "/profile",
     icon: [<ProfilesSvg2 />, <ProfilesSvg />],
     element: <ProfilesPage />,
   },
   {
-    label: "Label-Connections",
-    path: "/connections",
-    icon: [<ConnectionsSvg2 />, <ConnectionsSvg />],
-    element: <ConnectionsPage />,
+    label: "Label-Proxies",
+    path: "/",
+    icon: [<ProxiesSvg2 />, <ProxiesSvg />],
+    element: <ProxiesPage />,
   },
   {
     label: "Label-Rules",
     path: "/rules",
     icon: [<RulesSvg2 />, <RulesSvg />],
     element: <RulesPage />,
+  },
+  {
+    label: "Label-Connections",
+    path: "/connections",
+    icon: [<ConnectionsSvg2 />, <ConnectionsSvg />],
+    element: <ConnectionsPage />,
   },
   {
     label: "Label-Logs",
