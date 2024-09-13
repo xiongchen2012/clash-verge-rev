@@ -194,8 +194,11 @@ const SettingVerge = ({ onError }: Props) => {
                         },
                       ],
                     });
+                    // @ts-ignore
                     if (selected?.path.length) {
+                      // @ts-ignore
                       onChangeData({ startup_script: `${selected.path}` });
+                      // @ts-ignore
                       patchVerge({ startup_script: `${selected.path}` });
                     }
                   }}

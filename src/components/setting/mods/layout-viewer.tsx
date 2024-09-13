@@ -196,7 +196,9 @@ export const LayoutViewer = forwardRef<DialogRef>((props, ref) => {
                       },
                     ],
                   });
+                  // @ts-ignore
                   if (selected?.path.length) {
+                    // @ts-ignore
                     await copyIconFile(`${selected.path}`, "common");
                     await initIconPath();
                     onChangeData({ common_tray_icon: true });
@@ -242,7 +244,9 @@ export const LayoutViewer = forwardRef<DialogRef>((props, ref) => {
                       },
                     ],
                   });
+                  // @ts-ignore
                   if (selected?.path.length) {
+                    // @ts-ignore
                     await copyIconFile(`${selected.path}`, "sysproxy");
                     await initIconPath();
                     onChangeData({ sysproxy_tray_icon: true });
@@ -286,7 +290,9 @@ export const LayoutViewer = forwardRef<DialogRef>((props, ref) => {
                       },
                     ],
                   });
+                  // @ts-ignore
                   if (selected?.path.length) {
+                    // @ts-ignore
                     await copyIconFile(`${selected.path}`, "tun");
                     await initIconPath();
                     onChangeData({ tun_tray_icon: true });

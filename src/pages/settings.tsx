@@ -19,7 +19,7 @@ import SettingVerge from "@/components/setting/setting-verge";
 import SettingClash from "@/components/setting/setting-clash";
 import SettingSystem from "@/components/setting/setting-system";
 import { useThemeMode } from "@/services/states";
-import { checkUpdate } from "@tauri-apps/api/updater";
+// import { checkUpdate } from "@tauri-apps/api/updater";
 import { version } from "@root/package.json";
 import { useRef, useState } from "react";
 import { UpdateViewer } from "@/components/setting/mods/update-viewer";
@@ -48,19 +48,19 @@ const SettingPage = () => {
   const isDark = mode === "light" ? false : true;
 
   const [loading, setLoading] = useState(false);
-  const onCheckUpdate = async () => {
-    try {
-      setLoading(true);
-      const info = await checkUpdate().finally(() => setLoading(false));
-      if (!info?.shouldUpdate) {
-        Notice.success(t("Currently on the Latest Version"));
-      } else {
-        updateRef.current?.open();
-      }
-    } catch (err: any) {
-      Notice.error(err.message || err.toString());
-    }
-  };
+  // const onCheckUpdate = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const info = await checkUpdate().finally(() => setLoading(false));
+  //     if (!info?.shouldUpdate) {
+  //       Notice.success(t("Currently on the Latest Version"));
+  //     } else {
+  //       updateRef.current?.open();
+  //     }
+  //   } catch (err: any) {
+  //     Notice.error(err.message || err.toString());
+  //   }
+  // };
 
   return (
     <>
@@ -76,7 +76,7 @@ const SettingPage = () => {
         }
         header={
           <ButtonGroup variant="contained" aria-label="Basic button group">
-            <IconButton
+            {/* <IconButton
               size="medium"
               color="inherit"
               title="检查更新"
@@ -87,7 +87,7 @@ const SettingPage = () => {
               ) : (
                 <RocketLaunchOutlined fontSize="inherit" />
               )}
-            </IconButton>
+            </IconButton> */}
             <IconButton
               size="medium"
               color="inherit"

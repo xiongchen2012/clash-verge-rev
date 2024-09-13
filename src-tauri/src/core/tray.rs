@@ -10,7 +10,7 @@ use crate::{
 use anyhow::Result;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
 use tauri::{
-    menu::{MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
+    menu::{MenuEvent, MenuItem, PredefinedMenuItem},
     Wry,
 };
 use tauri::{AppHandle, Manager};
@@ -189,7 +189,7 @@ fn create_tray_menu(
 ) -> Result<tauri::menu::Menu<Wry>> {
     let mode = mode.unwrap_or("");
     let use_zh = { Config::verge().latest().language == Some("zh".into()) };
-    let version = VERSION.get().unwrap();
+    // let version = VERSION.get().unwrap();
 
     let rule_mode_text = if mode == "rule" {
         "✓ 规则模式"
@@ -221,32 +221,32 @@ fn create_tray_menu(
         "Tun 模式"
     };
 
-    let restart_clash = &MenuItem::with_id(
-        app_handle,
-        "restart_clash",
-        t!("Restart App", "重启 Clash", use_zh),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    // let restart_clash = &MenuItem::with_id(
+    //     app_handle,
+    //     "restart_clash",
+    //     t!("Restart App", "重启 Clash", use_zh),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
 
-    let restart_app = &MenuItem::with_id(
-        app_handle,
-        "restart_app",
-        t!("Restart App", "重启应用", use_zh),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    // let restart_app = &MenuItem::with_id(
+    //     app_handle,
+    //     "restart_app",
+    //     t!("Restart App", "重启应用", use_zh),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
 
-    let app_version = &MenuItem::with_id(
-        app_handle,
-        "app_version",
-        format!("Version {version}"),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    // let app_version = &MenuItem::with_id(
+    //     app_handle,
+    //     "app_version",
+    //     format!("Version {version}"),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
 
     let menu = tauri::menu::MenuBuilder::new(app_handle)
         .item(
@@ -332,15 +332,25 @@ fn create_tray_menu(
             .unwrap(),
         )
         .item(
-            &Submenu::with_id_and_items(
+            &MenuItem::with_id(
                 app_handle,
-                "more",
-                t!("More", "更多", use_zh),
+                "restart_all",
+                t!("Restart", "重启解千愁", use_zh),
                 true,
-                &[restart_clash, restart_app, app_version],
+                None::<&str>,
             )
             .unwrap(),
         )
+        // .item(
+        //     &Submenu::with_id_and_items(
+        //         app_handle,
+        //         "more",
+        //         t!("More", "更多", use_zh),
+        //         true,
+        //         &[restart_clash, restart_app, app_version],
+        //     )
+        //     .unwrap(),
+        // )
         .item(&PredefinedMenuItem::separator(app_handle).unwrap())
         .item(
             &MenuItem::with_id(
@@ -372,6 +382,10 @@ fn on_menu_event(app_handle: &AppHandle, event: MenuEvent) {
         "open_dir" => crate::log_err!(cmds::open_app_dir()),
         "restart_clash" => feat::restart_clash_core(),
         "restart_app" => tauri::process::restart(&app_handle.env()),
+        "restart_all" => {
+            feat::restart_clash_core();
+            tauri::process::restart(&app_handle.env());
+        }
         "quit" => cmds::exit_app(app_handle.clone()),
         _ => {}
     }
