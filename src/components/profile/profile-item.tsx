@@ -79,6 +79,7 @@ export const ProfileItem = (props: Props) => {
   const from = parseUrl(itemData.url);
   const description = itemData.desc;
   const expire = parseExpire(extra?.expire);
+  const rest = parseRest(extra?.expire);
   const progress = Math.min(
     Math.round(((download + upload) * 100) / (total + 0.01)) + 1,
     100
@@ -434,7 +435,19 @@ export const ProfileItem = (props: Props) => {
             <span title={t("Used / Total")}>
               {parseTraffic(upload + download)} / {parseTraffic(total)}
             </span>
-            <span title={t("Expire Time")}>{expire}</span>
+            <span title={t("Expire Time")}>
+              {expire}
+              {rest && (
+                <span
+                  style={{
+                    color: rest > 30 ? "#06943d" : "red",
+                    paddingLeft: "2px",
+                  }}
+                >
+                  剩{rest}天
+                </span>
+              )}
+            </span>
           </Box>
         ) : (
           <Box sx={{ ...boxStyle, fontSize: 12, justifyContent: "flex-end" }}>
@@ -581,4 +594,8 @@ function parseUrl(url?: string) {
 function parseExpire(expire?: number) {
   if (!expire) return "-";
   return dayjs(expire * 1000).format("YYYY-MM-DD");
+}
+function parseRest(expire?: number) {
+  if (!expire) return null;
+  return dayjs(expire * 1000).diff(dayjs(), "day");
 }
