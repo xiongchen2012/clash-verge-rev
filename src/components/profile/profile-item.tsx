@@ -436,15 +436,15 @@ export const ProfileItem = (props: Props) => {
               {parseTraffic(upload + download)} / {parseTraffic(total)}
             </span>
             <span title={t("Expire Time")}>
-              {expire}
               {rest && (
                 <span
+                  title={`过期时间：${expire}`}
                   style={{
                     color: rest > 30 ? "#06943d" : "red",
                     paddingLeft: "2px",
                   }}
                 >
-                  剩{rest}天
+                  还剩{rest}天
                 </span>
               )}
             </span>
@@ -457,6 +457,7 @@ export const ProfileItem = (props: Props) => {
         <LinearProgress
           variant="determinate"
           value={progress}
+          color={rest == null ? "primary" : rest > 30 ? "success" : "error"}
           style={{ opacity: total > 0 ? 1 : 0 }}
         />
       </ProfileBox>
