@@ -259,6 +259,16 @@ fn create_tray_menu(
             )
             .unwrap(),
         )
+        .item(
+            &MenuItem::with_id(
+                app_handle,
+                "open_dir",
+                t!("Open Dir", "打开目录", use_zh),
+                true,
+                None::<&str>,
+            )
+            .unwrap(),
+        )
         .item(&PredefinedMenuItem::separator(app_handle).unwrap())
         .item(
             &MenuItem::with_id(
@@ -324,18 +334,8 @@ fn create_tray_menu(
         .item(
             &MenuItem::with_id(
                 app_handle,
-                "open_dir",
-                t!("Open Dir", "打开目录", use_zh),
-                true,
-                None::<&str>,
-            )
-            .unwrap(),
-        )
-        .item(
-            &MenuItem::with_id(
-                app_handle,
                 "restart_all",
-                t!("Restart", "重启解千愁", use_zh),
+                t!("Restart", "😄 重启解千愁", use_zh),
                 true,
                 None::<&str>,
             )
