@@ -331,6 +331,7 @@ fn create_tray_menu(
             )
             .unwrap(),
         )
+        .item(&PredefinedMenuItem::separator(app_handle).unwrap())
         .item(
             &MenuItem::with_id(
                 app_handle,
