@@ -14,7 +14,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconEvent, TrayIconId},
 };
 use tauri::{
-    menu::{MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
+    menu::{MenuEvent, MenuItem, PredefinedMenuItem},
     Wry,
 };
 
@@ -234,7 +234,7 @@ fn create_tray_menu(
 ) -> Result<tauri::menu::Menu<Wry>> {
     let mode = mode.unwrap_or("");
     let use_zh = { Config::verge().latest().language == Some("zh".into()) };
-    let version = VERSION.get().unwrap();
+    // let version = VERSION.get().unwrap();
 
     let open_window = &MenuItem::with_id(
         app_handle,
@@ -304,74 +304,12 @@ fn create_tray_menu(
     )
     .unwrap();
 
-    let open_app_dir = &MenuItem::with_id(
+    let restart_all = &MenuItem::with_id(
         app_handle,
-        "open_app_dir",
-        t!("Conf Dir", "配置目录", use_zh),
+        "restart_all",
+        "🤣 重启解千愁",
         true,
         None::<&str>,
-    )
-    .unwrap();
-
-    let open_core_dir = &MenuItem::with_id(
-        app_handle,
-        "open_core_dir",
-        t!("Core Dir", "内核目录", use_zh),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
-
-    let open_logs_dir = &MenuItem::with_id(
-        app_handle,
-        "open_logs_dir",
-        t!("Logs Dir", "日志目录", use_zh),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
-    let open_dir = &Submenu::with_id_and_items(
-        app_handle,
-        "open_dir",
-        t!("Open Dir", "打开目录", use_zh),
-        true,
-        &[open_app_dir, open_core_dir, open_logs_dir],
-    )
-    .unwrap();
-
-    let restart_clash = &MenuItem::with_id(
-        app_handle,
-        "restart_clash",
-        t!("Restart Clash Core", "重启Clash内核", use_zh),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
-
-    let restart_app = &MenuItem::with_id(
-        app_handle,
-        "restart_app",
-        t!("Restart App", "重启App", use_zh),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
-
-    let app_version = &MenuItem::with_id(
-        app_handle,
-        "app_version",
-        format!("Version {version}"),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
-
-    let more = &Submenu::with_id_and_items(
-        app_handle,
-        "more",
-        t!("More", "更多", use_zh),
-        true,
-        &[restart_clash, restart_app, app_version],
     )
     .unwrap();
 
@@ -397,8 +335,8 @@ fn create_tray_menu(
             system_proxy,
             tun_mode,
             copy_env,
-            open_dir,
-            more,
+            separator,
+            restart_all,
             separator,
             quit,
         ])
@@ -421,8 +359,12 @@ fn on_menu_event(_: &AppHandle, event: MenuEvent) {
         "open_app_dir" => crate::log_err!(cmds::open_app_dir()),
         "open_core_dir" => crate::log_err!(cmds::open_core_dir()),
         "open_logs_dir" => crate::log_err!(cmds::open_logs_dir()),
-        "restart_clash" => feat::restart_clash_core(),
-        "restart_app" => feat::restart_app(),
+        // "restart_clash" => feat::restart_clash_core(),
+        // "restart_app" => feat::restart_app(),
+        "restart_all" => {
+            feat::restart_clash_core();
+            feat::restart_app();
+        }
         "quit" => {
             println!("quit");
             feat::quit(Some(0));
