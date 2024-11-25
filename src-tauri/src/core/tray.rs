@@ -234,7 +234,7 @@ fn create_tray_menu(
 ) -> Result<tauri::menu::Menu<Wry>> {
     let mode = mode.unwrap_or("");
     let use_zh = { Config::verge().latest().language == Some("zh".into()) };
-    // let version = VERSION.get().unwrap();
+    let version = VERSION.get().unwrap();
 
     let open_window = &MenuItem::with_id(
         app_handle,
