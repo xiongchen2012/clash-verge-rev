@@ -163,7 +163,7 @@ const Layout = () => {
                 />
                 <LogoSvg fill={isDark ? "white" : "black"} />
               </div>
-              {<UpdateButton className="the-newbtn" />}
+              {/* {<UpdateButton className="the-newbtn" />} */}
             </div>
 
             <List className="the-menu">
