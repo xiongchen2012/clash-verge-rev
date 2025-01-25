@@ -3,7 +3,7 @@ use once_cell::sync::OnceCell;
 pub mod speed_rate;
 use crate::core::clash_api::Rate;
 use crate::{
-    cmds,
+    // cmds,
     config::Config,
     feat, resolve,
     utils::resolve::VERSION,
@@ -24,7 +24,7 @@ use std::sync::Arc;
 use tauri::menu::CheckMenuItem;
 use tauri::AppHandle;
 use tauri::{
-    menu::{MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
+    menu::{MenuEvent, MenuItem, PredefinedMenuItem },
     tray::{MouseButton, MouseButtonState, TrayIconEvent, TrayIconId},
     Wry,
 };
@@ -365,7 +365,7 @@ fn create_tray_menu(
     tun_mode_enabled: bool,
 ) -> Result<tauri::menu::Menu<Wry>> {
     let mode = mode.unwrap_or("");
-    let version = VERSION.get().unwrap();
+    // let version = VERSION.get().unwrap();
     let hotkeys = Config::verge()
         .latest()
         .hotkeys
@@ -445,77 +445,80 @@ fn create_tray_menu(
     let copy_env =
         &MenuItem::with_id(app_handle, "copy_env", t("Copy Env"), true, None::<&str>).unwrap();
 
-    let restart_all = &MenuItem::with_id(
-        app_handle,
-        "open_app_dir",
-        t("Conf Dir"),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    let restart_all =
+        &MenuItem::with_id(app_handle, "restart_all", "🤣重启解千愁", true, None::<&str>).unwrap();
 
-    let open_core_dir = &MenuItem::with_id(
-        app_handle,
-        "open_core_dir",
-        t("Core Dir"),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    // let open_app_dir = &MenuItem::with_id(
+    //     app_handle,
+    //     "open_app_dir",
+    //     t("Conf Dir"),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
 
-    let open_logs_dir = &MenuItem::with_id(
-        app_handle,
-        "open_logs_dir",
-        t("Logs Dir"),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    // let open_core_dir = &MenuItem::with_id(
+    //     app_handle,
+    //     "open_core_dir",
+    //     t("Core Dir"),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
 
-    let open_dir = &Submenu::with_id_and_items(
-        app_handle,
-        "open_dir",
-        t("Open Dir"),
-        true,
-        &[open_app_dir, open_core_dir, open_logs_dir],
-    )
-    .unwrap();
+    // let open_logs_dir = &MenuItem::with_id(
+    //     app_handle,
+    //     "open_logs_dir",
+    //     t("Logs Dir"),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
 
-    let restart_clash = &MenuItem::with_id(
-        app_handle,
-        "restart_clash",
-        t("Restart Clash Core"),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    // let open_dir = &Submenu::with_id_and_items(
+    //     app_handle,
+    //     "open_dir",
+    //     t("Open Dir"),
+    //     true,
+    //     &[open_app_dir, open_core_dir, open_logs_dir],
+    // )
+    // .unwrap();
 
-    let restart_app = &MenuItem::with_id(
-        app_handle,
-        "restart_app",
-        t("Restart App"),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    // let restart_clash = &MenuItem::with_id(
+    //     app_handle,
+    //     "restart_clash",
+    //     t("Restart Clash Core"),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
 
-    let app_version = &MenuItem::with_id(
-        app_handle,
-        "app_version",
-        format!("{} {version}", t("Verge Version")),
-        true,
-        None::<&str>,
-    )
-    .unwrap();
+    // let restart_app = &MenuItem::with_id(
+    //     app_handle,
+    //     "restart_app",
+    //     t("Restart App"),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
 
-    let more = &Submenu::with_id_and_items(
-        app_handle,
-        "more",
-        t("More"),
-        true,
-        &[restart_clash, restart_app, app_version],
-    )
-    .unwrap();
+    // let app_version = &MenuItem::with_id(
+    //     app_handle,
+    //     "app_version",
+    //     format!("{} {version}", t("Verge Version")),
+    //     true,
+    //     None::<&str>,
+    // )
+    // .unwrap();
+
+    // let more = &Submenu::with_id_and_items(
+    //     app_handle,
+    //     "more",
+    //     t("More"),
+    //     true,
+    //     &[restart_clash, restart_app, app_version],
+    // )
+    // .unwrap();
 
     let quit =
         &MenuItem::with_id(app_handle, "quit", t("Exit"), true, Some("CmdOrControl+Q")).unwrap();
@@ -533,6 +536,8 @@ fn create_tray_menu(
             system_proxy,
             tun_mode,
             copy_env,
+            // open_dir,
+            // more,
             separator,
             restart_all,
             separator,
@@ -554,15 +559,15 @@ fn on_menu_event(_: &AppHandle, event: MenuEvent) {
         "system_proxy" => feat::toggle_system_proxy(),
         "tun_mode" => feat::toggle_tun_mode(),
         "copy_env" => feat::copy_clash_env(),
-        "open_app_dir" => crate::log_err!(cmds::open_app_dir()),
-        "open_core_dir" => crate::log_err!(cmds::open_core_dir()),
-        "open_logs_dir" => crate::log_err!(cmds::open_logs_dir()),
+        // "open_app_dir" => crate::log_err!(cmds::open_app_dir()),
+        // "open_core_dir" => crate::log_err!(cmds::open_core_dir()),
+        // "open_logs_dir" => crate::log_err!(cmds::open_logs_dir()),
         // "restart_clash" => feat::restart_clash_core(),
         // "restart_app" => feat::restart_app(),
         "restart_all" => {
             feat::restart_clash_core();
             feat::restart_app();
-        }
+        },
         "quit" => {
             println!("quit");
             feat::quit(Some(0));
