@@ -32,6 +32,7 @@ import parseTraffic from "@/utils/parse-traffic";
 import { ConfirmViewer } from "@/components/profile/confirm-viewer";
 import { open } from "@tauri-apps/plugin-shell";
 import { ProxiesEditorViewer } from "./proxies-editor-viewer";
+import { isNumber } from "lodash-es";
 const round = keyframes`
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -82,7 +83,7 @@ export const ProfileItem = (props: Props) => {
   const rest = parseRest(extra?.expire);
   const progress = Math.min(
     Math.round(((download + upload) * 100) / (total + 0.01)) + 1,
-    100
+    100,
   );
 
   const loading = loadingCache[itemData.uid] ?? false;
@@ -207,7 +208,7 @@ export const ProfileItem = (props: Props) => {
     } catch (err: any) {
       const errmsg = err?.message || err.toString();
       Notice.error(
-        errmsg.replace(/error sending request for url (\S+?): /, "")
+        errmsg.replace(/error sending request for url (\S+?): /, ""),
       );
     } finally {
       setLoadingCache((cache) => ({ ...cache, [itemData.uid]: false }));
@@ -440,7 +441,7 @@ export const ProfileItem = (props: Props) => {
                 <span
                   title={`过期时间：${expire}`}
                   style={{
-                    color: rest > 30 ? "#06943d" : "red",
+                    color: makeProgressTheme(rest)[1],
                     paddingLeft: "2px",
                   }}
                 >
@@ -457,7 +458,7 @@ export const ProfileItem = (props: Props) => {
         <LinearProgress
           variant="determinate"
           value={progress}
-          color={rest == null ? "primary" : rest > 30 ? "success" : "error"}
+          color={makeProgressTheme(rest)[0]}
           style={{ opacity: total > 0 ? 1 : 0 }}
         />
       </ProfileBox>
@@ -600,3 +601,16 @@ function parseRest(expire?: number) {
   if (!expire) return null;
   return dayjs(expire * 1000).diff(dayjs(), "day");
 }
+
+const makeProgressTheme = (
+  rest: number | null,
+): ["primary" | "warning" | "error" | "success", string] => {
+  if (rest == null || !isNumber(rest)) return ["primary", "#fff"];
+  // 当rest大于30时，返回success，10～29时返回warning，小于10时返回'error'
+  if (rest >= 30) {
+    return ["success", "#06943d"];
+  } else if (rest >= 10 && rest < 30) {
+    return ["warning", "#fd8206"];
+  }
+  return ["error", "red"];
+};
