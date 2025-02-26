@@ -101,6 +101,5 @@
     "singleQuote": false,
     "endOfLine": "lf"
   },
-  "type": "module",
-  "packageManager": "pnpm@10.4.0"
+  "type": "module"
 }

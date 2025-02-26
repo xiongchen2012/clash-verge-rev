@@ -189,7 +189,12 @@ const ConnectionsPage = () => {
     return [connections];
   }, [displayData, match, curOrderOpt]);
 
-  const onCloseAll = useLockFn(closeAllConnections);
+  const onCloseAll = (close?: string) => {
+    if (close === "CLOSE") {
+      closeAllConnections();
+    }
+    setOpen(false);
+  };
 
   const detailRef = useRef<ConnectionDetailRef>(null!);
 

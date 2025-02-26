@@ -24,7 +24,7 @@ use std::sync::Arc;
 use tauri::menu::{CheckMenuItem, IsMenuItem};
 use tauri::AppHandle;
 use tauri::{
-    menu::{MenuEvent, MenuItem, PredefinedMenuItem },
+    menu::{MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconEvent, TrayIconId},
     Wry,
 };
@@ -391,7 +391,7 @@ fn create_tray_menu(
                 .collect::<std::collections::HashMap<String, String>>()
         })
         .unwrap_or_default();
-    
+
     let profile_menu_items: Vec<CheckMenuItem<Wry>> = profile_uid_and_name
         .iter()
         .map(|(profile_uid, profile_name)| {
@@ -451,10 +451,10 @@ fn create_tray_menu(
     .unwrap();
 
     let profiles = &Submenu::with_id_and_items(
-        app_handle, 
-        "profiles", 
+        app_handle,
+        "profiles",
         t("Profiles"),
-        true, 
+        true,
         &profile_menu_items,
     ).unwrap();
 
