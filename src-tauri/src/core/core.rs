@@ -174,6 +174,12 @@ impl CoreManager {
 
     /// 内部验证配置文件的实现
     async fn validate_config_internal(&self, config_path: &str) -> Result<(bool, String)> {
+        // 检查程序是否正在退出，如果是则跳过验证
+        if handle::Handle::global().is_exiting() {
+            println!("[core配置验证] 应用正在退出，跳过验证");
+            return Ok((true, String::new()));
+        }
+        
         println!("[core配置验证] 开始验证配置文件: {}", config_path);
         
         let clash_core = { Config::verge().latest().clash_core.clone() };
@@ -240,12 +246,24 @@ impl CoreManager {
     }
 
     /// 验证指定的配置文件
-    pub async fn validate_config_file(&self, config_path: &str) -> Result<(bool, String)> {
+    pub async fn validate_config_file(&self, config_path: &str, is_merge_file: Option<bool>) -> Result<(bool, String)> {
+        // 检查程序是否正在退出，如果是则跳过验证
+        if handle::Handle::global().is_exiting() {
+            println!("[core配置验证] 应用正在退出，跳过验证");
+            return Ok((true, String::new()));
+        }
+        
         // 检查文件是否存在
         if !std::path::Path::new(config_path).exists() {
             let error_msg = format!("File not found: {}", config_path);
             //handle::Handle::notice_message("config_validate::file_not_found", &error_msg);
             return Ok((false, error_msg));
+        }
+        
+        // 如果是合并文件且不是强制验证，执行语法检查但不进行完整验证
+        if is_merge_file.unwrap_or(false) {
+            println!("[core配置验证] 检测到Merge文件，仅进行语法检查: {}", config_path);
+            return self.validate_file_syntax(config_path).await;
         }
         
         // 检查是否为脚本文件
@@ -274,6 +292,14 @@ impl CoreManager {
 
     /// 检查文件是否为脚本文件
     fn is_script_file(&self, path: &str) -> Result<bool> {
+        // 1. 先通过扩展名快速判断
+        if path.ends_with(".yaml") || path.ends_with(".yml") {
+            return Ok(false); // YAML文件不是脚本文件
+        } else if path.ends_with(".js") {
+            return Ok(true); // JS文件是脚本文件
+        }
+        
+        // 2. 读取文件内容
         let content = match std::fs::read_to_string(path) {
             Ok(content) => content,
             Err(err) => {
@@ -282,15 +308,52 @@ impl CoreManager {
             }
         };
         
-        // 检查文件前几行是否包含JavaScript特征
-        let first_lines = content.lines().take(5).collect::<String>();
-        Ok(first_lines.contains("function") || 
-           first_lines.contains("//") || 
-           first_lines.contains("/*") ||
-           first_lines.contains("import") ||
-           first_lines.contains("export") ||
-           first_lines.contains("const ") ||
-           first_lines.contains("let "))
+        // 3. 检查是否存在明显的YAML特征
+        let has_yaml_features = content.contains(": ") || 
+                               content.contains("#") || 
+                               content.contains("---") ||
+                               content.lines().any(|line| line.trim().starts_with("- "));
+                               
+        // 4. 检查是否存在明显的JS特征
+        let has_js_features = content.contains("function ") || 
+                             content.contains("const ") || 
+                             content.contains("let ") ||
+                             content.contains("var ") ||
+                             content.contains("//") ||
+                             content.contains("/*") ||
+                             content.contains("*/") ||
+                             content.contains("export ") ||
+                             content.contains("import ");
+        
+        // 5. 决策逻辑
+        if has_yaml_features && !has_js_features {
+            // 只有YAML特征，没有JS特征
+            return Ok(false);
+        } else if has_js_features && !has_yaml_features {
+            // 只有JS特征，没有YAML特征
+            return Ok(true);
+        } else if has_yaml_features && has_js_features {
+            // 两种特征都有，需要更精细判断
+            // 优先检查是否有明确的JS结构特征
+            if content.contains("function main") || 
+               content.contains("module.exports") ||
+               content.contains("export default") {
+                return Ok(true);
+            }
+            
+            // 检查冒号后是否有空格（YAML的典型特征）
+            let yaml_pattern_count = content.lines()
+                .filter(|line| line.contains(": "))
+                .count();
+                
+            if yaml_pattern_count > 2 {
+                return Ok(false); // 多个键值对格式，更可能是YAML
+            }
+        }
+        
+        // 默认情况：无法确定时，假设为非脚本文件（更安全）
+        log::debug!(target: "app", "无法确定文件类型，默认当作YAML处理: {}", path);
+        Ok(false)
     }
 
     /// 验证脚本文件语法
@@ -300,7 +363,8 @@ impl CoreManager {
             Ok(content) => content,
             Err(err) => {
                 let error_msg = format!("Failed to read script file: {}", err);
-                //handle::Handle::notice_message("config_validate::script_error", &error_msg);
+                log::warn!(target: "app", "脚本语法错误: {}", err);
+                //handle::Handle::notice_message("config_validate::script_syntax_error", &error_msg);
                 return Ok((false, error_msg));
             }
         };
@@ -338,6 +402,12 @@ impl CoreManager {
 
     /// 更新proxies等配置
     pub async fn update_config(&self) -> Result<(bool, String)> {
+        // 检查程序是否正在退出，如果是则跳过完整验证流程
+        if handle::Handle::global().is_exiting() {
+            println!("[core配置更新] 应用正在退出，跳过验证");
+            return Ok((true, String::new()));
+        }
+        
         println!("[core配置更新] 开始更新配置");
         
         // 1. 先生成新的配置内容
@@ -392,6 +462,36 @@ impl CoreManager {
                 println!("[core配置更新] 验证过程发生错误: {}", e);
                 Config::runtime().discard();
                 Err(e)
+            }
+        }
+    }
+
+    /// 只进行文件语法检查，不进行完整验证
+    async fn validate_file_syntax(&self, config_path: &str) -> Result<(bool, String)> {
+        println!("[core配置语法检查] 开始检查文件: {}", config_path);
+        
+        // 读取文件内容
+        let content = match std::fs::read_to_string(config_path) {
+            Ok(content) => content,
+            Err(err) => {
+                let error_msg = format!("Failed to read file: {}", err);
+                println!("[core配置语法检查] 无法读取文件: {}", error_msg);
+                return Ok((false, error_msg));
+            }
+        };
+        
+        // 对YAML文件尝试解析，只检查语法正确性
+        println!("[core配置语法检查] 进行YAML语法检查");
+        match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+            Ok(_) => {
+                println!("[core配置语法检查] YAML语法检查通过");
+                Ok((true, String::new()))
+            },
+            Err(err) => {
+                // 使用标准化的前缀，以便错误处理函数能正确识别
+                let error_msg = format!("YAML syntax error: {}", err);
+                println!("[core配置语法检查] YAML语法错误: {}", error_msg);
+                Ok((false, error_msg))
             }
         }
     }
