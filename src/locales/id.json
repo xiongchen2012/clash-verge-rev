@@ -64,7 +64,7 @@
   "global": "global",
   "direct": "langsung",
   "script": "skrip",
-  "Location": "Lokasi",
+  "locate": "Lokasi",
   "Delay check": "Periksa Keterlambatan",
   "Sort by default": "Urutkan secara default",
   "Sort by delay": "Urutkan berdasarkan keterlambatan",
@@ -443,5 +443,11 @@
   "File Not Found": "File tidak ditemukan, perubahan dibatalkan",
   "Script File Error": "Kesalahan file skrip, perubahan dibatalkan",
   "Core Changed Successfully": "Inti berhasil diubah",
-  "Failed to Change Core": "Gagal mengubah inti"
+  "Failed to Change Core": "Gagal mengubah inti",
+  "Verge Basic Setting": "Pengaturan Dasar Verge",
+  "Verge Advanced Setting": "Pengaturan Lanjutan Verge",
+  "TUN requires Service Mode": "Mode TUN memerlukan layanan",
+  "Install Service": "Instal Layanan",
+  "Installing Service...": "Memasang Layanan...",
+  "Service Administrator Prompt": "Clash Verge memerlukan hak administrator untuk menginstal ulang layanan sistem"
 }

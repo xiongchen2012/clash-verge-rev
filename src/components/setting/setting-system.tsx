@@ -5,6 +5,8 @@ import {
   SettingsRounded,
   PlayArrowRounded,
   PauseRounded,
+  WarningRounded,
+  BuildRounded,
 } from "@mui/icons-material";
 import { useVerge } from "@/hooks/use-verge";
 import { DialogRef, Notice, Switch } from "@/components/base";
@@ -13,7 +15,14 @@ import { GuardState } from "./mods/guard-state";
 import { SysproxyViewer } from "./mods/sysproxy-viewer";
 import { TunViewer } from "./mods/tun-viewer";
 import { TooltipIcon } from "@/components/base/base-tooltip-icon";
-import { getSystemProxy, getAutotemProxy } from "@/services/cmds";
+import {
+  getSystemProxy,
+  getAutotemProxy,
+  getRunningMode,
+  installService,
+} from "@/services/cmds";
+import { useLockFn } from "ahooks";
+import { Box, Button, Tooltip } from "@mui/material";
 
 interface Props {
   onError?: (err: Error) => void;
@@ -26,6 +35,13 @@ const SettingSystem = ({ onError }: Props) => {
 
   const { data: sysproxy } = useSWR("getSystemProxy", getSystemProxy);
   const { data: autoproxy } = useSWR("getAutotemProxy", getAutotemProxy);
+  const { data: runningMode, mutate: mutateRunningMode } = useSWR(
+    "getRunningMode",
+    getRunningMode,
+  );
+
+  // 是否以sidecar模式运行
+  const isSidecarMode = runningMode === "sidecar";
 
   const sysproxyRef = useRef<DialogRef>(null);
   const tunRef = useRef<DialogRef>(null);
@@ -37,10 +53,6 @@ const SettingSystem = ({ onError }: Props) => {
     enable_system_proxy,
     proxy_auto_config,
   } = verge ?? {};
-
-  const isProxyEnabled = proxy_auto_config
-    ? autoproxy?.enable
-    : sysproxy?.enable;
 
   const onSwitchFormat = (_e: any, value: boolean) => value;
   const onChangeData = (patch: Partial<IVergeConfig>) => {
@@ -54,6 +66,19 @@ const SettingSystem = ({ onError }: Props) => {
     await mutate("getAutotemProxy");
   };
 
+  // 安装系统服务
+  const onInstallService = useLockFn(async () => {
+    try {
+      Notice.info(t("Installing Service..."), 1000);
+      await installService();
+      Notice.success(t("Service Installed Successfully"), 2000);
+      // 重新获取运行模式
+      await mutateRunningMode();
+    } catch (err: any) {
+      Notice.error(err.message || err.toString(), 3000);
+    }
+  });
+
   return (
     <SettingList title={t("System Setting")}>
       <SysproxyViewer ref={sysproxyRef} />
@@ -62,11 +87,31 @@ const SettingSystem = ({ onError }: Props) => {
       <SettingItem
         label={t("Tun Mode")}
         extra={
-          <TooltipIcon
-            title={t("Tun Mode Info")}
-            icon={SettingsRounded}
-            onClick={() => tunRef.current?.open()}
-          />
+          <>
+            <TooltipIcon
+              title={t("Tun Mode Info")}
+              icon={SettingsRounded}
+              onClick={() => tunRef.current?.open()}
+            />
+            {isSidecarMode && (
+              <Tooltip title={t("TUN requires Service Mode")}>
+                <WarningRounded sx={{ color: "warning.main", mr: 1 }} />
+              </Tooltip>
+            )}
+            {isSidecarMode && (
+              <Tooltip title={t("Install Service")}>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  onClick={onInstallService}
+                  sx={{ mr: 1, minWidth: "32px", p: "4px" }}
+                >
+                  <BuildRounded fontSize="small" />
+                </Button>
+              </Tooltip>
+            )}
+          </>
         }
       >
         <GuardState
@@ -75,13 +120,20 @@ const SettingSystem = ({ onError }: Props) => {
           onCatch={onError}
           onFormat={onSwitchFormat}
           onChange={(e) => {
+            // 当在sidecar模式下禁用切换
+            if (isSidecarMode) return;
             onChangeData({ enable_tun_mode: e });
           }}
           onGuard={(e) => {
+            // 当在sidecar模式下禁用切换
+            if (isSidecarMode) {
+              Notice.error(t("TUN requires Service Mode"), 2000);
+              return Promise.reject(new Error(t("TUN requires Service Mode")));
+            }
             return patchVerge({ enable_tun_mode: e });
           }}
         >
-          <Switch edge="end" />
+          <Switch edge="end" disabled={isSidecarMode} />
         </GuardState>
       </SettingItem>
       <SettingItem
@@ -93,7 +145,13 @@ const SettingSystem = ({ onError }: Props) => {
               icon={SettingsRounded}
               onClick={() => sysproxyRef.current?.open()}
             />
-            {isProxyEnabled ? (
+            {proxy_auto_config ? (
+              autoproxy?.enable ? (
+                <PlayArrowRounded sx={{ color: "success.main", mr: 1 }} />
+              ) : (
+                <PauseRounded sx={{ color: "error.main", mr: 1 }} />
+              )
+            ) : sysproxy?.enable ? (
               <PlayArrowRounded sx={{ color: "success.main", mr: 1 }} />
             ) : (
               <PauseRounded sx={{ color: "error.main", mr: 1 }} />

@@ -33,22 +33,24 @@ async function updatePackageVersion(newVersion) {
   const _dirname = process.cwd();
   const packageJsonPath = path.join(_dirname, "package.json");
   try {
+    // 读取文件
     const data = await fs.readFile(packageJsonPath, "utf8");
     const packageJson = JSON.parse(data);
-    const initversion = packageJson.version;
-    // 将匹配到的第一个 "alpha" => 具体的hash
-    const fixversion = initversion.replace("alpha", newVersion);
-    packageJson.version = fixversion;
+    // 获取键值替换
+    let result = packageJson.version.replace("alpha", newVersion);
+    console.log("[INFO]: Current version is: ", result);
+    packageJson.version = result;
     // 写入版本号
     await fs.writeFile(
       packageJsonPath,
       JSON.stringify(packageJson, null, 2),
       "utf8",
     );
-    console.log(`Alpha version update to: ${fixversion}`);
+    console.log(`[INFO]: Alpha version update to: ${newVersion}`);
   } catch (error) {
     console.error("pnpm run fix-alpha-version ERROR", error);
   }
 }
+
 const newVersion = await getLatestCommitHash();
-updatePackageVersion(newVersion);
+updatePackageVersion(newVersion).catch(console.error);

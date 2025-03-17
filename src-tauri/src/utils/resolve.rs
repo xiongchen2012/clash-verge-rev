@@ -1,7 +1,12 @@
-use crate::config::IVerge;
-use crate::utils::error;
-use crate::{config::Config, config::PrfItem, core::*, utils::init, utils::server};
-use crate::{log_err, wrap_err};
+#[cfg(target_os = "macos")]
+use crate::AppHandleManager;
+use crate::{
+    config::{Config, IVerge, PrfItem},
+    core::*,
+    log_err,
+    utils::{error, init, server},
+    wrap_err,
+};
 use anyhow::{bail, Result};
 use once_cell::sync::OnceCell;
 use percent_encoding::percent_decode_str;
@@ -37,7 +42,10 @@ pub fn find_unused_port() -> Result<u16> {
 pub async fn resolve_setup(app: &mut App) {
     error::redirect_panic_to_log();
     #[cfg(target_os = "macos")]
-    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+    {
+        AppHandleManager::global().init(app.app_handle().clone());
+        AppHandleManager::global().set_activation_policy_accessory();
+    }
     let version = app.package_info().version.to_string();
 
     handle::Handle::global().init(app.app_handle());
@@ -72,14 +80,12 @@ pub async fn resolve_setup(app: &mut App) {
                         }
                     }
                     if !service_runing {
-                        log::error!(target: "app", "service not runing. exit");
-                        app.app_handle().exit(-2);
+                        log::warn!(target: "app", "service not running, will fallback to user mode");
                     }
                 }
             }
             Err(e) => {
-                log::error!(target: "app", "{e:?}");
-                app.app_handle().exit(-1);
+                log::warn!(target: "app", "failed to install service: {e:?}, will fallback to user mode");
             }
         }
     }
@@ -93,7 +99,7 @@ pub async fn resolve_setup(app: &mut App) {
 
     log::trace!(target: "app", "init system tray");
     log_err!(tray::Tray::global().init());
-    log_err!(tray::Tray::global().create_systray());
+    log_err!(tray::Tray::global().create_systray(app));
 
     log_err!(sysopt::Sysopt::global().update_sysproxy().await);
     log_err!(sysopt::Sysopt::global().init_guard_sysproxy());
@@ -130,6 +136,8 @@ pub fn create_window() {
     log::info!(target: "app", "Starting to create window");
 
     let app_handle = handle::Handle::global().app_handle().unwrap();
+    #[cfg(target_os = "macos")]
+    AppHandleManager::global().set_activation_policy_regular();
 
     if let Some(window) = handle::Handle::global().get_window() {
         println!("Found existing window, trying to show it");
@@ -161,7 +169,7 @@ pub fn create_window() {
             .maximizable(true)
             .additional_browser_args("--enable-features=msWebView2EnableDraggableRegions --disable-features=OverscrollHistoryNavigation,msExperimentalScrolling")
             .transparent(true)
-            .shadow(false)
+            .shadow(true)
             .build();
 
     #[cfg(target_os = "macos")]
@@ -196,7 +204,7 @@ pub fn create_window() {
             log::info!(target: "app", "Window created successfully, attempting to show");
             let _ = window.show();
             let _ = window.set_focus();
-            
+
             // 设置窗口状态监控，实时保存窗口位置和大小
             crate::feat::setup_window_state_monitor(&app_handle);
         }
@@ -310,8 +318,7 @@ fn resolve_random_port_config() -> Result<()> {
 
 #[cfg(target_os = "macos")]
 pub async fn set_public_dns(dns_server: String) {
-    use crate::core::handle;
-    use crate::utils::dirs;
+    use crate::{core::handle, utils::dirs};
     use tauri_plugin_shell::ShellExt;
     let app_handle = handle::Handle::global().app_handle().unwrap();
 
@@ -347,8 +354,7 @@ pub async fn set_public_dns(dns_server: String) {
 
 #[cfg(target_os = "macos")]
 pub async fn restore_public_dns() {
-    use crate::core::handle;
-    use crate::utils::dirs;
+    use crate::{core::handle, utils::dirs};
     use tauri_plugin_shell::ShellExt;
     let app_handle = handle::Handle::global().app_handle().unwrap();
     log::info!(target: "app", "try to unset system dns");

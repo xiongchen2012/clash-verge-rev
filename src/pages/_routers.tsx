@@ -1,10 +1,11 @@
 import LogsPage from "./logs";
 import ProxiesPage from "./proxies";
-import TestPage from "./test";
 import ProfilesPage from "./profiles";
 import SettingsPage from "./settings";
 import ConnectionsPage from "./connections";
 import RulesPage from "./rules";
+import HomePage from "./home";
+import UnlockPage from "./unlock";
 import { BaseErrorBoundary } from "@/components/base";
 
 import ProxiesSvg from "@/assets/image/itemicon/proxies.svg?react";
@@ -16,8 +17,6 @@ import ConnectionsSvg2 from "@/assets/image/itemicon/connections2.svg?react";
 import RulesSvg from "@/assets/image/itemicon/rules.svg?react";
 import RulesSvg2 from "@/assets/image/itemicon/rules2.svg?react";
 import LogsSvg from "@/assets/image/itemicon/logs.svg?react";
-import TestSvg from "@/assets/image/itemicon/test.svg?react";
-import TestSvg2 from "@/assets/image/itemicon/test2.svg?react";
 import SettingsSvg from "@/assets/image/itemicon/settings.svg?react";
 import SettingsSvg2 from "@/assets/image/itemicon/settings2.svg?react";
 
@@ -28,8 +27,22 @@ import ForkRightRoundedIcon from "@mui/icons-material/ForkRightRounded";
 import SubjectRoundedIcon from "@mui/icons-material/SubjectRounded";
 import WifiTetheringRoundedIcon from "@mui/icons-material/WifiTetheringRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
 
 export const routers = [
+  {
+    label: "Label-Home",
+    path: "/home",
+    icon: [<HomeRoundedIcon />],
+    element: <HomePage />,
+  },
+  {
+    label: "Label-Proxies",
+    path: "/",
+    icon: [<WifiRoundedIcon />, <ProxiesSvg />],
+    element: <ProxiesPage />,
+  },
   {
     label: "Label-Profiles",
     path: "/profile",
@@ -61,10 +74,10 @@ export const routers = [
     element: <LogsPage />,
   },
   {
-    label: "Label-Test",
-    path: "/test",
-    icon: [<TestSvg2 />, <TestSvg />],
-    element: <TestPage />,
+    label: "Label-Unlock",
+    path: "/unlock",
+    icon: [<LockOpenRoundedIcon />],
+    element: <UnlockPage />,
   },
   {
     label: "Label-Settings",

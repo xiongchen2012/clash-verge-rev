@@ -41,12 +41,14 @@ const AlphabetSelector = styled(Box)(({ theme }) => ({
   "& .scroll-container": {
     overflow: "hidden",
     maxHeight: "inherit",
+    willChange: "transform",
   },
   "& .letter-container": {
     display: "flex",
     flexDirection: "column",
     gap: "2px",
     transition: "transform 0.2s ease",
+    willChange: "transform",
   },
   "& .letter": {
     padding: "1px 4px",
@@ -229,7 +231,8 @@ export const ProxyGroups = (props: Props) => {
 
   // 缓存getFirstChar函数
   const getFirstChar = useCallback((str: string) => {
-    const regex = /\p{Extended_Pictographic}|\p{L}|\p{N}|./u;
+    const regex =
+      /\p{Regional_Indicator}{2}|\p{Extended_Pictographic}|\p{L}|\p{N}|./u;
     const match = str.match(regex);
     return match ? match[0] : str.charAt(0);
   }, []);
@@ -259,7 +262,7 @@ export const ProxyGroups = (props: Props) => {
     }
   }, [mode, renderList]);
 
-  // 使用防抖保存滚动位置
+  // 改为使用节流函数保存滚动位置
   const saveScrollPosition = useCallback(
     (scrollTop: number) => {
       try {
@@ -275,13 +278,14 @@ export const ProxyGroups = (props: Props) => {
     [mode],
   );
 
-  // 优化滚动处理函数，使用防抖
+  // 使用改进的滚动处理
   const handleScroll = useCallback(
-    debounce((e: any) => {
+    throttle((e: any) => {
       const scrollTop = e.target.scrollTop;
       setShowScrollTop(scrollTop > 100);
+      // 使用稳定的节流来保存位置，而不是setTimeout
       saveScrollPosition(scrollTop);
-    }, 16),
+    }, 500), // 增加到500ms以确保平滑滚动
     [saveScrollPosition],
   );
 
@@ -361,6 +365,8 @@ export const ProxyGroups = (props: Props) => {
 
   // 测全部延迟
   const handleCheckAll = useLockFn(async (groupName: string) => {
+    console.log(`[ProxyGroups] 开始测试所有延迟，组: ${groupName}`);
+
     const proxies = renderList
       .filter(
         (e) => e.group?.name === groupName && (e.type === 2 || e.type === 4),
@@ -368,20 +374,40 @@ export const ProxyGroups = (props: Props) => {
       .flatMap((e) => e.proxyCol || e.proxy!)
       .filter(Boolean);
 
+    console.log(`[ProxyGroups] 找到代理数量: ${proxies.length}`);
+
     const providers = new Set(proxies.map((p) => p!.provider!).filter(Boolean));
 
     if (providers.size) {
+      console.log(`[ProxyGroups] 发现提供者，数量: ${providers.size}`);
       Promise.allSettled(
         [...providers].map((p) => providerHealthCheck(p)),
-      ).then(() => onProxies());
+      ).then(() => {
+        console.log(`[ProxyGroups] 提供者健康检查完成`);
+        onProxies();
+      });
     }
 
     const names = proxies.filter((p) => !p!.provider).map((p) => p!.name);
+    console.log(`[ProxyGroups] 过滤后需要测试的代理数量: ${names.length}`);
 
-    await Promise.race([
-      delayManager.checkListDelay(names, groupName, timeout),
-      getGroupProxyDelays(groupName, delayManager.getUrl(groupName), timeout), // 查询group delays 将清除fixed(不关注调用结果)
-    ]);
+    const url = delayManager.getUrl(groupName);
+    console.log(`[ProxyGroups] 测试URL: ${url}, 超时: ${timeout}ms`);
+
+    try {
+      await Promise.race([
+        delayManager.checkListDelay(names, groupName, timeout),
+        getGroupProxyDelays(groupName, url, timeout).then((result) => {
+          console.log(
+            `[ProxyGroups] getGroupProxyDelays返回结果数量:`,
+            Object.keys(result || {}).length,
+          );
+        }), // 查询group delays 将清除fixed(不关注调用结果)
+      ]);
+      console.log(`[ProxyGroups] 延迟测试完成，组: ${groupName}`);
+    } catch (error) {
+      console.error(`[ProxyGroups] 延迟测试出错，组: ${groupName}`, error);
+    }
 
     onProxies();
   });
@@ -407,8 +433,11 @@ export const ProxyGroups = (props: Props) => {
     }
   };
 
-  // 添加滚轮事件处理函数
+  // 添加滚轮事件处理函数 - 改进为只在悬停时触发
   const handleWheel = useCallback((e: WheelEvent) => {
+    // 只有当鼠标在字母选择器上时才处理滚轮事件
+    if (!alphabetSelectorRef.current?.contains(e.target as Node)) return;
+
     e.preventDefault();
     if (!letterContainerRef.current) return;
 
@@ -470,12 +499,14 @@ export const ProxyGroups = (props: Props) => {
   }
 
   return (
-    <div style={{ position: "relative", height: "100%" }}>
+    <div
+      style={{ position: "relative", height: "100%", willChange: "transform" }}
+    >
       <Virtuoso
         ref={virtuosoRef}
         style={{ height: "calc(100% - 14px)" }}
         totalCount={renderList.length}
-        increaseViewportBy={{ top: 256, bottom: 256 }}
+        increaseViewportBy={{ top: 200, bottom: 200 }}
         overscan={150}
         defaultItemHeight={56}
         scrollerRef={(ref) => {
@@ -484,6 +515,9 @@ export const ProxyGroups = (props: Props) => {
         components={{
           Footer: () => <div style={{ height: "8px" }} />,
         }}
+        // 添加平滑滚动设置
+        initialScrollTop={scrollPositionRef.current[mode]}
+        computeItemKey={(index) => renderList[index].key}
         itemContent={(index) => (
           <ProxyRender
             key={renderList[index].key}
@@ -516,7 +550,36 @@ export const ProxyGroups = (props: Props) => {
   );
 };
 
-// 简单的防抖函数
+// 替换简单防抖函数为更优的节流函数
+function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number,
+): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let previous = 0;
+
+  return function (...args: Parameters<T>) {
+    const now = Date.now();
+    const remaining = wait - (now - previous);
+
+    if (remaining <= 0 || remaining > wait) {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      previous = now;
+      func(...args);
+    } else if (!timer) {
+      timer = setTimeout(() => {
+        previous = Date.now();
+        timer = null;
+        func(...args);
+      }, remaining);
+    }
+  };
+}
+
+// 保留防抖函数以兼容其他地方可能的使用
 function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number,

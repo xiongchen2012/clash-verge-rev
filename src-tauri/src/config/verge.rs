@@ -1,7 +1,7 @@
-use crate::config::DEFAULT_PAC;
-use crate::config::{deserialize_encrypted, serialize_encrypted};
-use crate::utils::i18n;
-use crate::utils::{dirs, help};
+use crate::{
+    config::{deserialize_encrypted, serialize_encrypted, DEFAULT_PAC},
+    utils::{dirs, help, i18n},
+};
 use anyhow::Result;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
@@ -70,6 +70,9 @@ pub struct IVerge {
     /// enable proxy guard
     pub enable_proxy_guard: Option<bool>,
 
+    /// enable dns settings - this controls whether dns_config.yaml is applied
+    pub enable_dns_settings: Option<bool>,
+
     /// always use default bypass
     pub use_default_bypass: Option<bool>,
 
@@ -98,9 +101,13 @@ pub struct IVerge {
     /// hotkey map
     /// format: {func},{key}
     pub hotkeys: Option<Vec<String>>,
-    
+
     /// enable global hotkey
     pub enable_global_hotkey: Option<bool>,
+
+    /// 首页卡片设置
+    /// 控制首页各个卡片的显示和隐藏
+    pub home_cards: Option<serde_json::Value>,
 
     /// 切换代理时自动关闭连接
     pub auto_close_connection: Option<bool>,
@@ -287,6 +294,8 @@ impl IVerge {
             enable_tray_speed: Some(true),
             enable_global_hotkey: Some(true),
             enable_lite_mode: Some(false),
+            enable_dns_settings: Some(true),
+            home_cards: None,
             ..Self::default()
         }
     }
@@ -369,6 +378,8 @@ impl IVerge {
         patch!(webdav_password);
         patch!(enable_tray_speed);
         patch!(enable_lite_mode);
+        patch!(enable_dns_settings);
+        patch!(home_cards);
     }
 
     /// 在初始化前尝试拿到单例端口的值
@@ -458,6 +469,8 @@ pub struct IVergeResponse {
     pub webdav_password: Option<String>,
     pub enable_tray_speed: Option<bool>,
     pub enable_lite_mode: Option<bool>,
+    pub enable_dns_settings: Option<bool>,
+    pub home_cards: Option<serde_json::Value>,
 }
 
 impl From<IVerge> for IVergeResponse {
@@ -521,6 +534,8 @@ impl From<IVerge> for IVergeResponse {
             webdav_password: verge.webdav_password,
             enable_tray_speed: verge.enable_tray_speed,
             enable_lite_mode: verge.enable_lite_mode,
+            enable_dns_settings: verge.enable_dns_settings,
+            home_cards: verge.home_cards,
         }
     }
 }

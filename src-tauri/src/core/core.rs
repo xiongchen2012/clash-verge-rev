@@ -1,20 +1,32 @@
-use crate::config::*;
-use crate::core::{clash_api, handle, service};
 #[cfg(target_os = "macos")]
 use crate::core::tray::Tray;
-use crate::log_err;
-use crate::utils::{dirs, help};
+use crate::{
+    config::*,
+    core::{handle, service},
+    log_err,
+    module::mihomo::MihomoManager,
+    utils::{dirs, help},
+};
 use anyhow::{bail, Result};
 use once_cell::sync::OnceCell;
-use serde_yaml::Mapping;
-use std::{sync::Arc, time::Duration};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use tauri_plugin_shell::ShellExt;
-use tokio::sync::Mutex;
-use tokio::time::sleep;
+use tokio::{sync::Mutex, time::sleep};
 
 #[derive(Debug)]
 pub struct CoreManager {
     running: Arc<Mutex<bool>>,
+}
+
+/// 内核运行模式
+#[derive(Debug, Clone, serde::Serialize)]
+pub enum RunningMode {
+    /// 服务模式运行
+    Service,
+    /// Sidecar模式运行
+    Sidecar,
+    /// 未运行
+    NotRunning,
 }
 
 impl CoreManager {
@@ -43,20 +55,47 @@ impl CoreManager {
         }
 
         // 关闭tun模式
-        let mut disable = Mapping::new();
-        let mut tun = Mapping::new();
-        tun.insert("enable".into(), false.into());
-        disable.insert("tun".into(), tun.into());
+        // Create a JSON object to disable TUN mode
+        let disable = serde_json::json!({
+            "tun": {
+            "enable": false
+            }
+        });
         log::debug!(target: "app", "disable tun mode");
-        log_err!(clash_api::patch_configs(&disable).await);
+        log_err!(MihomoManager::global().patch_configs(disable).await);
 
         // 服务模式
         if service::check_service().await.is_ok() {
             log::info!(target: "app", "stop the core by service");
-            service::stop_core_by_service().await?;
+            match service::stop_core_by_service().await {
+                Ok(_) => {
+                    log::info!(target: "app", "core stopped successfully by service");
+                }
+                Err(err) => {
+                    log::warn!(target: "app", "failed to stop core by service: {}", err);
+                    // 服务停止失败，尝试停止可能的sidecar进程
+                    self.stop_sidecar_process();
+                }
+            }
+        } else {
+            // 如果没有使用服务，尝试停止sidecar进程
+            self.stop_sidecar_process();
         }
+
         *running = false;
         Ok(())
+    }
+
+    /// 停止通过sidecar启动的进程
+    fn stop_sidecar_process(&self) {
+        if let Some(process) = handle::Handle::global().take_core_process() {
+            log::info!(target: "app", "stopping core process in sidecar mode");
+            if let Err(e) = process.kill() {
+                log::warn!(target: "app", "failed to kill core process: {}", e);
+            } else {
+                log::info!(target: "app", "core process stopped successfully");
+            }
+        }
     }
 
     /// 启动核心
@@ -69,11 +108,26 @@ impl CoreManager {
 
         let config_path = Config::generate_file(ConfigType::Run)?;
 
-        // 服务模式
+        // 先尝试服务模式
         if service::check_service().await.is_ok() {
             log::info!(target: "app", "try to run core in service mode");
-            service::run_core_by_service(&config_path).await?;
+            match service::run_core_by_service(&config_path).await {
+                Ok(_) => {
+                    log::info!(target: "app", "core started successfully in service mode");
+                }
+                Err(err) => {
+                    // 服务启动失败，尝试sidecar模式
+                    log::warn!(target: "app", "failed to start core in service mode: {}", err);
+                    log::info!(target: "app", "trying to run core in sidecar mode");
+                    self.run_core_by_sidecar(&config_path).await?;
+                }
+            }
+        } else {
+            // 服务不可用，直接使用sidecar模式
+            log::info!(target: "app", "service not available, running core in sidecar mode");
+            self.run_core_by_sidecar(&config_path).await?;
         }
+
         // 流量订阅
         #[cfg(target_os = "macos")]
         log_err!(Tray::global().subscribe_traffic().await);
@@ -83,11 +137,45 @@ impl CoreManager {
         Ok(())
     }
 
+    /// 通过sidecar启动内核
+    async fn run_core_by_sidecar(&self, config_path: &PathBuf) -> Result<()> {
+        let clash_core = { Config::verge().latest().clash_core.clone() };
+        let clash_core = clash_core.unwrap_or("verge-mihomo".into());
+
+        log::info!(target: "app", "starting core {} in sidecar mode", clash_core);
+
+        let app_handle = handle::Handle::global()
+            .app_handle()
+            .ok_or(anyhow::anyhow!("failed to get app handle"))?;
+
+        // 获取配置目录
+        let config_dir = dirs::app_home_dir()?;
+        let config_path_str = dirs::path_to_str(config_path)?;
+
+        // 启动核心进程并转入后台运行
+        let (_, child) = app_handle
+            .shell()
+            .sidecar(clash_core)?
+            .args(["-d", dirs::path_to_str(&config_dir)?, "-f", config_path_str])
+            .spawn()?;
+
+        // 保存进程ID以便后续管理
+        handle::Handle::global().set_core_process(child);
+
+        // 等待短暂时间确保启动成功
+        sleep(Duration::from_millis(300)).await;
+
+        log::info!(target: "app", "core started in sidecar mode");
+        Ok(())
+    }
+
     /// 重启内核
     pub async fn restart_core(&self) -> Result<()> {
         // 重新启动app
+        log::info!(target: "app", "restarting core");
         self.stop_core().await?;
         self.start_core().await?;
+        log::info!(target: "app", "core restarted successfully");
         Ok(())
     }
 
@@ -118,10 +206,10 @@ impl CoreManager {
         }
 
         log::info!(target: "app", "change core to `{clash_core}`");
-        
+
         // 1. 先更新内核配置（但不应用）
         Config::verge().draft().clash_core = Some(clash_core);
-        
+
         // 2. 使用新内核验证配置
         println!("[切换内核] 使用新内核验证配置");
         match self.validate_config().await {
@@ -130,7 +218,7 @@ impl CoreManager {
                 // 3. 验证通过后，应用内核配置并重启
                 Config::verge().apply();
                 log_err!(Config::verge().latest().save_file());
-                
+
                 match self.restart_core().await {
                     Ok(_) => {
                         println!("[切换内核] 内核切换成功");
@@ -139,19 +227,22 @@ impl CoreManager {
                     }
                     Err(err) => {
                         println!("[切换内核] 内核切换失败: {}", err);
-                        Config::verge().discard();
-                        Config::runtime().discard();
-                        Err(err)
+                        // 即使使用服务失败，我们也尝试使用sidecar模式启动
+                        log::info!(target: "app", "trying sidecar mode after service failure");
+                        self.start_core().await?;
+                        Config::runtime().apply();
+                        Ok(())
                     }
                 }
             }
             Ok((false, error_msg)) => {
                 println!("[切换内核] 配置验证失败: {}", error_msg);
                 // 使用默认配置并继续切换内核
-                self.use_default_config("config_validate::core_change", &error_msg).await?;
+                self.use_default_config("config_validate::core_change", &error_msg)
+                    .await?;
                 Config::verge().apply();
                 log_err!(Config::verge().latest().save_file());
-                
+
                 match self.restart_core().await {
                     Ok(_) => {
                         println!("[切换内核] 内核切换成功（使用默认配置）");
@@ -159,8 +250,10 @@ impl CoreManager {
                     }
                     Err(err) => {
                         println!("[切换内核] 内核切换失败: {}", err);
-                        Config::verge().discard();
-                        Err(err)
+                        // 即使使用服务失败，我们也尝试使用sidecar模式启动
+                        log::info!(target: "app", "trying sidecar mode after service failure with default config");
+                        self.start_core().await?;
+                        Ok(())
                     }
                 }
             }
@@ -174,12 +267,18 @@ impl CoreManager {
 
     /// 内部验证配置文件的实现
     async fn validate_config_internal(&self, config_path: &str) -> Result<(bool, String)> {
+        // 检查程序是否正在退出，如果是则跳过验证
+        if handle::Handle::global().is_exiting() {
+            println!("[core配置验证] 应用正在退出，跳过验证");
+            return Ok((true, String::new()));
+        }
+
         println!("[core配置验证] 开始验证配置文件: {}", config_path);
-        
+
         let clash_core = { Config::verge().latest().clash_core.clone() };
         let clash_core = clash_core.unwrap_or("verge-mihomo".into());
         println!("[core配置验证] 使用内核: {}", clash_core);
-        
+
         let app_handle = handle::Handle::global().app_handle().unwrap();
         let test_dir = dirs::app_home_dir()?.join("test");
         let test_dir = dirs::path_to_str(&test_dir)?;
@@ -196,14 +295,15 @@ impl CoreManager {
 
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        
+
         // 检查进程退出状态和错误输出
         let error_keywords = ["FATA", "fatal", "Parse config error", "level=fatal"];
-        let has_error = !output.status.success() || error_keywords.iter().any(|&kw| stderr.contains(kw));
-        
+        let has_error =
+            !output.status.success() || error_keywords.iter().any(|&kw| stderr.contains(kw));
+
         println!("\n[core配置验证] -------- 验证结果 --------");
         println!("[core配置验证] 进程退出状态: {:?}", output.status);
-    
+
         if !stderr.is_empty() {
             println!("[core配置验证] stderr输出:\n{}", stderr);
         }
@@ -224,7 +324,7 @@ impl CoreManager {
             };
 
             println!("[core配置验证] -------- 验证结束 --------\n");
-            Ok((false, error_msg))  // 返回错误消息给调用者处理
+            Ok((false, error_msg)) // 返回错误消息给调用者处理
         } else {
             println!("[core配置验证] 验证成功");
             println!("[core配置验证] -------- 验证结束 --------\n");
@@ -240,14 +340,33 @@ impl CoreManager {
     }
 
     /// 验证指定的配置文件
-    pub async fn validate_config_file(&self, config_path: &str) -> Result<(bool, String)> {
+    pub async fn validate_config_file(
+        &self,
+        config_path: &str,
+        is_merge_file: Option<bool>,
+    ) -> Result<(bool, String)> {
+        // 检查程序是否正在退出，如果是则跳过验证
+        if handle::Handle::global().is_exiting() {
+            println!("[core配置验证] 应用正在退出，跳过验证");
+            return Ok((true, String::new()));
+        }
+
         // 检查文件是否存在
         if !std::path::Path::new(config_path).exists() {
             let error_msg = format!("File not found: {}", config_path);
             //handle::Handle::notice_message("config_validate::file_not_found", &error_msg);
             return Ok((false, error_msg));
         }
-        
+
+        // 如果是合并文件且不是强制验证，执行语法检查但不进行完整验证
+        if is_merge_file.unwrap_or(false) {
+            println!(
+                "[core配置验证] 检测到Merge文件，仅进行语法检查: {}",
+                config_path
+            );
+            return self.validate_file_syntax(config_path).await;
+        }
+
         // 检查是否为脚本文件
         let is_script = if config_path.ends_with(".js") {
             true
@@ -261,12 +380,12 @@ impl CoreManager {
                 }
             }
         };
-        
+
         if is_script {
             log::info!(target: "app", "检测到脚本文件，使用JavaScript验证: {}", config_path);
             return self.validate_script_file(config_path).await;
         }
-        
+
         // 对YAML配置文件使用Clash内核验证
         log::info!(target: "app", "使用Clash内核验证配置文件: {}", config_path);
         self.validate_config_internal(config_path).await
@@ -274,23 +393,70 @@ impl CoreManager {
 
     /// 检查文件是否为脚本文件
     fn is_script_file(&self, path: &str) -> Result<bool> {
+        // 1. 先通过扩展名快速判断
+        if path.ends_with(".yaml") || path.ends_with(".yml") {
+            return Ok(false); // YAML文件不是脚本文件
+        } else if path.ends_with(".js") {
+            return Ok(true); // JS文件是脚本文件
+        }
+
+        // 2. 读取文件内容
         let content = match std::fs::read_to_string(path) {
             Ok(content) => content,
             Err(err) => {
                 log::warn!(target: "app", "无法读取文件以检测类型: {}, 错误: {}", path, err);
-                return Err(anyhow::anyhow!("Failed to read file to detect type: {}", err));
+                return Err(anyhow::anyhow!(
+                    "Failed to read file to detect type: {}",
+                    err
+                ));
             }
         };
-        
-        // 检查文件前几行是否包含JavaScript特征
-        let first_lines = content.lines().take(5).collect::<String>();
-        Ok(first_lines.contains("function") || 
-           first_lines.contains("//") || 
-           first_lines.contains("/*") ||
-           first_lines.contains("import") ||
-           first_lines.contains("export") ||
-           first_lines.contains("const ") ||
-           first_lines.contains("let "))
+
+        // 3. 检查是否存在明显的YAML特征
+        let has_yaml_features = content.contains(": ")
+            || content.contains("#")
+            || content.contains("---")
+            || content.lines().any(|line| line.trim().starts_with("- "));
+
+        // 4. 检查是否存在明显的JS特征
+        let has_js_features = content.contains("function ")
+            || content.contains("const ")
+            || content.contains("let ")
+            || content.contains("var ")
+            || content.contains("//")
+            || content.contains("/*")
+            || content.contains("*/")
+            || content.contains("export ")
+            || content.contains("import ");
+
+        // 5. 决策逻辑
+        if has_yaml_features && !has_js_features {
+            // 只有YAML特征，没有JS特征
+            return Ok(false);
+        } else if has_js_features && !has_yaml_features {
+            // 只有JS特征，没有YAML特征
+            return Ok(true);
+        } else if has_yaml_features && has_js_features {
+            // 两种特征都有，需要更精细判断
+            // 优先检查是否有明确的JS结构特征
+            if content.contains("function main")
+                || content.contains("module.exports")
+                || content.contains("export default")
+            {
+                return Ok(true);
+            }
+
+            // 检查冒号后是否有空格（YAML的典型特征）
+            let yaml_pattern_count = content.lines().filter(|line| line.contains(": ")).count();
+
+            if yaml_pattern_count > 2 {
+                return Ok(false); // 多个键值对格式，更可能是YAML
+            }
+        }
+
+        // 默认情况：无法确定时，假设为非脚本文件（更安全）
+        log::debug!(target: "app", "无法确定文件类型，默认当作YAML处理: {}", path);
+        Ok(false)
     }
 
     /// 验证脚本文件语法
@@ -300,33 +466,37 @@ impl CoreManager {
             Ok(content) => content,
             Err(err) => {
                 let error_msg = format!("Failed to read script file: {}", err);
-                //handle::Handle::notice_message("config_validate::script_error", &error_msg);
+                log::warn!(target: "app", "脚本语法错误: {}", err);
+                //handle::Handle::notice_message("config_validate::script_syntax_error", &error_msg);
                 return Ok((false, error_msg));
             }
         };
-        
+
         log::debug!(target: "app", "验证脚本文件: {}", path);
-        
+
         // 使用boa引擎进行基本语法检查
         use boa_engine::{Context, Source};
-        
+
         let mut context = Context::default();
         let result = context.eval(Source::from_bytes(&content));
-        
+
         match result {
             Ok(_) => {
                 log::debug!(target: "app", "脚本语法验证通过: {}", path);
-                
+
                 // 检查脚本是否包含main函数
-                if !content.contains("function main") && !content.contains("const main") && !content.contains("let main") {
+                if !content.contains("function main")
+                    && !content.contains("const main")
+                    && !content.contains("let main")
+                {
                     let error_msg = "Script must contain a main function";
                     log::warn!(target: "app", "脚本缺少main函数: {}", path);
                     //handle::Handle::notice_message("config_validate::script_missing_main", error_msg);
                     return Ok((false, error_msg.to_string()));
                 }
-                
+
                 Ok((true, String::new()))
-            },
+            }
             Err(err) => {
                 let error_msg = format!("Script syntax error: {}", err);
                 log::warn!(target: "app", "脚本语法错误: {}", err);
@@ -338,12 +508,18 @@ impl CoreManager {
 
     /// 更新proxies等配置
     pub async fn update_config(&self) -> Result<(bool, String)> {
+        // 检查程序是否正在退出，如果是则跳过完整验证流程
+        if handle::Handle::global().is_exiting() {
+            println!("[core配置更新] 应用正在退出，跳过验证");
+            return Ok((true, String::new()));
+        }
+
         println!("[core配置更新] 开始更新配置");
-        
+
         // 1. 先生成新的配置内容
         println!("[core配置更新] 生成新的配置内容");
         Config::generate().await?;
-        
+
         // 2. 生成临时文件并进行验证
         println!("[core配置更新] 生成临时配置文件用于验证");
         let temp_config = Config::generate_file(ConfigType::Check)?;
@@ -362,7 +538,7 @@ impl CoreManager {
                 // 5. 应用新配置
                 println!("[core配置更新] 应用新配置");
                 for i in 0..3 {
-                    match clash_api::put_configs(run_path).await {
+                    match MihomoManager::global().put_configs_force(run_path).await {
                         Ok(_) => {
                             println!("[core配置更新] 配置应用成功");
                             Config::runtime().apply();
@@ -392,6 +568,70 @@ impl CoreManager {
                 println!("[core配置更新] 验证过程发生错误: {}", e);
                 Config::runtime().discard();
                 Err(e)
+            }
+        }
+    }
+
+    /// 只进行文件语法检查，不进行完整验证
+    async fn validate_file_syntax(&self, config_path: &str) -> Result<(bool, String)> {
+        println!("[core配置语法检查] 开始检查文件: {}", config_path);
+
+        // 读取文件内容
+        let content = match std::fs::read_to_string(config_path) {
+            Ok(content) => content,
+            Err(err) => {
+                let error_msg = format!("Failed to read file: {}", err);
+                println!("[core配置语法检查] 无法读取文件: {}", error_msg);
+                return Ok((false, error_msg));
+            }
+        };
+
+        // 对YAML文件尝试解析，只检查语法正确性
+        println!("[core配置语法检查] 进行YAML语法检查");
+        match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+            Ok(_) => {
+                println!("[core配置语法检查] YAML语法检查通过");
+                Ok((true, String::new()))
+            }
+            Err(err) => {
+                // 使用标准化的前缀，以便错误处理函数能正确识别
+                let error_msg = format!("YAML syntax error: {}", err);
+                println!("[core配置语法检查] YAML语法错误: {}", error_msg);
+                Ok((false, error_msg))
+            }
+        }
+    }
+
+    /// 获取当前内核运行模式
+    pub async fn get_running_mode(&self) -> RunningMode {
+        let running = self.running.lock().await;
+        if !*running {
+            return RunningMode::NotRunning;
+        }
+
+        // 检查服务状态
+        match service::check_service().await {
+            Ok(_) => {
+                // 检查服务是否实际运行核心
+                match service::is_service_running().await {
+                    Ok(true) => RunningMode::Service,
+                    _ => {
+                        // 服务存在但可能没有运行，检查是否有sidecar进程
+                        if handle::Handle::global().has_core_process() {
+                            RunningMode::Sidecar
+                        } else {
+                            RunningMode::NotRunning
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                // 服务不可用，检查是否有sidecar进程
+                if handle::Handle::global().has_core_process() {
+                    RunningMode::Sidecar
+                } else {
+                    RunningMode::NotRunning
+                }
             }
         }
     }

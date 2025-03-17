@@ -5,17 +5,10 @@ mod script;
 pub mod seq;
 mod tun;
 
-use self::chain::*;
-use self::field::*;
-use self::merge::*;
-use self::script::*;
-use self::seq::*;
-use self::tun::*;
-use crate::config::Config;
-use crate::utils::tmpl;
+use self::{chain::*, field::*, merge::*, script::*, seq::*, tun::*};
+use crate::{config::Config, utils::tmpl};
 use serde_yaml::Mapping;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 type ResultLog = Vec<(String, String)>;
 
@@ -25,7 +18,7 @@ pub async fn enhance() -> (Mapping, Vec<String>, HashMap<String, ResultLog>) {
     // config.yaml 的订阅
     let clash_config = { Config::clash().latest().0.clone() };
 
-    let (clash_core, enable_tun, enable_builtin, socks_enabled, http_enabled) = {
+    let (clash_core, enable_tun, enable_builtin, socks_enabled, http_enabled, enable_dns_settings) = {
         let verge = Config::verge();
         let verge = verge.latest();
         (
@@ -34,6 +27,7 @@ pub async fn enhance() -> (Mapping, Vec<String>, HashMap<String, ResultLog>) {
             verge.enable_builtin_enhanced.unwrap_or(true),
             verge.verge_socks_enabled.unwrap_or(false),
             verge.verge_http_enabled.unwrap_or(false),
+            verge.enable_dns_settings.unwrap_or(false),
         )
     };
     #[cfg(not(target_os = "windows"))]
@@ -261,6 +255,27 @@ pub async fn enhance() -> (Mapping, Vec<String>, HashMap<String, ResultLog>) {
 
     config = use_tun(config, enable_tun).await;
     config = use_sort(config);
+
+    // 应用独立的DNS配置（如果启用）
+    if enable_dns_settings {
+        use crate::utils::dirs;
+        use std::fs;
+
+        // 尝试读取dns_config.yaml
+        if let Ok(app_dir) = dirs::app_home_dir() {
+            let dns_path = app_dir.join("dns_config.yaml");
+
+            if dns_path.exists() {
+                if let Ok(dns_yaml) = fs::read_to_string(&dns_path) {
+                    if let Ok(dns_config) = serde_yaml::from_str::<serde_yaml::Mapping>(&dns_yaml) {
+                        // 将DNS配置合并到最终配置中
+                        config.insert("dns".into(), dns_config.into());
+                        log::info!(target: "app", "apply dns_config.yaml");
+                    }
+                }
+            }
+        }
+    }
 
     let mut exists_set = HashSet::new();
     exists_set.extend(exists_keys);

@@ -30,7 +30,13 @@ export const ConnectionDetail = forwardRef<ConnectionDetailRef>(
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         open={open}
         onClose={onClose}
-        sx={{ maxWidth: "520px" }}
+        sx={{
+          ".MuiSnackbarContent-root": {
+            maxWidth: "520px",
+            maxHeight: "480px",
+            overflowY: "auto",
+          },
+        }}
         message={
           detail ? (
             <InnerConnectionDetail data={detail} onClose={onClose} />
@@ -51,8 +57,11 @@ const InnerConnectionDetail = ({ data, onClose }: InnerProps) => {
   const chains = [...data.chains].reverse().join(" / ");
   const rule = rulePayload ? `${data.rule}(${rulePayload})` : data.rule;
   const host = metadata.host
-    ? `${metadata.host}:${metadata.remoteDestination}`
+    ? `${metadata.host}:${metadata.destinationPort}`
     : `${metadata.remoteDestination}:${metadata.destinationPort}`;
+  const Destination = metadata.destinationIP
+    ? metadata.destinationIP
+    : metadata.remoteDestination;
 
   const information = [
     { label: t("Host"), value: host },
@@ -66,7 +75,10 @@ const InnerConnectionDetail = ({ data, onClose }: InnerProps) => {
       label: t("UL Speed"),
       value: parseTraffic(data.curUpload ?? -1).join(" ") + "/s",
     },
-    { label: t("Chains"), value: chains },
+    {
+      label: t("Chains"),
+      value: chains,
+    },
     { label: t("Rule"), value: rule },
     {
       label: t("Process"),
@@ -79,7 +91,7 @@ const InnerConnectionDetail = ({ data, onClose }: InnerProps) => {
       label: t("Source"),
       value: `${metadata.sourceIP}:${metadata.sourcePort}`,
     },
-    { label: t("Destination"), value: metadata.remoteDestination },
+    { label: t("Destination"), value: Destination },
     { label: t("DestinationPort"), value: `${metadata.destinationPort}` },
     { label: t("Type"), value: `${metadata.type}(${metadata.network})` },
   ];
@@ -90,7 +102,8 @@ const InnerConnectionDetail = ({ data, onClose }: InnerProps) => {
     <Box sx={{ userSelect: "text" }}>
       {information.map((each) => (
         <div key={each.label}>
-          <b>{each.label}</b>: <span>{each.value}</span>
+          <b>{each.label}</b>
+          <span style={{ wordBreak: "break-all" }}>: {each.value}</span>
         </div>
       ))}
 

@@ -85,6 +85,7 @@ pub fn use_seq(seq: SeqMap, mut config: Mapping, field: &str) -> Mapping {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
     use serde_yaml::Value;
 
     #[test]
@@ -107,7 +108,7 @@ proxy-groups:
     - "proxy1"
 "#;
         let mut config: Mapping = serde_yaml::from_str(config_str).unwrap();
-        
+
         let seq = SeqMap {
             prepend: Sequence::new(),
             append: Sequence::new(),
@@ -120,16 +121,32 @@ proxy-groups:
         let proxies = config.get("proxies").unwrap().as_sequence().unwrap();
         assert_eq!(proxies.len(), 1);
         assert_eq!(
-            proxies[0].as_mapping().unwrap().get("name").unwrap().as_str().unwrap(),
+            proxies[0]
+                .as_mapping()
+                .unwrap()
+                .get("name")
+                .unwrap()
+                .as_str()
+                .unwrap(),
             "proxy2"
         );
 
         // Check if proxy1 is removed from all groups
         let groups = config.get("proxy-groups").unwrap().as_sequence().unwrap();
-        let group1_proxies = groups[0].as_mapping().unwrap()
-            .get("proxies").unwrap().as_sequence().unwrap();
-        let group2_proxies = groups[1].as_mapping().unwrap()
-            .get("proxies").unwrap().as_sequence().unwrap();
+        let group1_proxies = groups[0]
+            .as_mapping()
+            .unwrap()
+            .get("proxies")
+            .unwrap()
+            .as_sequence()
+            .unwrap();
+        let group2_proxies = groups[1]
+            .as_mapping()
+            .unwrap()
+            .get("proxies")
+            .unwrap()
+            .as_sequence()
+            .unwrap();
 
         assert_eq!(group1_proxies.len(), 1);
         assert_eq!(group1_proxies[0].as_str().unwrap(), "proxy2");

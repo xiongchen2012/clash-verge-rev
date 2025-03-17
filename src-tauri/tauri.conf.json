@@ -1,4 +1,5 @@
 {
+  "version": "2.1.3-alpha",
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "bundle": {
     "active": true,
@@ -16,7 +17,7 @@
     "copyright": "GNU General Public License v3.0",
     "category": "DeveloperTool",
     "shortDescription": "Clash Verge Rev",
-    "createUpdaterArtifacts": "v1Compatible"
+    "createUpdaterArtifacts": true
   },
   "build": {
     "beforeBuildCommand": "pnpm run web:build",
@@ -25,24 +26,24 @@
     "devUrl": "http://localhost:3000/"
   },
   "productName": "Clash Verge",
-  "version": "2.1.0",
   "identifier": "io.github.clash-verge-rev.clash-verge-rev",
   "plugins": {
-    "deep-link": {
-      "desktop": {
-        "schemes": ["clash", "clash-verge"]
-      }
-    },
     "updater": {
-      "active": true,
-      "dialog": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQyOEMyRjBCQkVGOUJEREYKUldUZnZmbStDeStNMHU5Mmo1N24xQXZwSVRYbXA2NUpzZE5oVzlqeS9Bc0t6RVV4MmtwVjBZaHgK",
       "endpoints": [
         "https://download.clashverge.dev/https://github.com/clash-verge-rev/clash-verge-rev/releases/download/updater/update-proxy.json",
         "https://github.com/clash-verge-rev/clash-verge-rev/releases/download/updater/update.json",
-        "https://download.clashverge.dev/https://github.com/clash-verge-rev/clash-verge-rev/releases/download/alpha/update-alpha-proxy.json",
-        "https://github.com/clash-verge-rev/clash-verge-rev/releases/download/alpha/update-alpha.json"
-      ]
+        "https://download.clashverge.dev/https://github.com/clash-verge-rev/clash-verge-rev/releases/download/updater-alpha/update-alpha-proxy.json",
+        "https://github.com/clash-verge-rev/clash-verge-rev/releases/download/updater-alpha/update-alpha.json"
+      ],
+      "windows": {
+        "installMode": "basicUi"
+      }
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["clash", "clash-verge"]
+      }
     }
   },
   "app": {

@@ -14,7 +14,7 @@ import LogoSvg from "@/assets/image/logo.svg?react";
 import iconLight from "@/assets/image/icon_light.svg?react";
 import iconDark from "@/assets/image/icon_dark.svg?react";
 import avatar from "@/assets/image/avatar.jpg?url";
-import { useThemeMode } from "@/services/states";
+import { useThemeMode, useEnableLog } from "@/services/states";
 import { Notice } from "@/components/base";
 import { LayoutItem } from "@/components/layout/layout-item";
 import { LayoutControl } from "@/components/layout/layout-control";
@@ -29,6 +29,8 @@ import React from "react";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
 import { useListen } from "@/hooks/use-listen";
 import { listen } from "@tauri-apps/api/event";
+import { useClashInfo } from "@/hooks/use-clash";
+import { initGlobalLogService } from "@/services/global-log-service";
 
 const appWindow = getCurrentWebviewWindow();
 export let portableFlag = false;
@@ -85,6 +87,33 @@ const handleNoticeMessage = (
     case "config_validate::file_not_found":
       Notice.error(`${t("File Not Found")} ${msg}`);
       break;
+    case "config_validate::yaml_syntax_error":
+      Notice.error(`${t("YAML Syntax Error")} ${msg}`);
+      break;
+    case "config_validate::yaml_read_error":
+      Notice.error(`${t("YAML Read Error")} ${msg}`);
+      break;
+    case "config_validate::yaml_mapping_error":
+      Notice.error(`${t("YAML Mapping Error")} ${msg}`);
+      break;
+    case "config_validate::yaml_key_error":
+      Notice.error(`${t("YAML Key Error")} ${msg}`);
+      break;
+    case "config_validate::yaml_error":
+      Notice.error(`${t("YAML Error")} ${msg}`);
+      break;
+    case "config_validate::merge_syntax_error":
+      Notice.error(`${t("Merge File Syntax Error")} ${msg}`);
+      break;
+    case "config_validate::merge_mapping_error":
+      Notice.error(`${t("Merge File Mapping Error")} ${msg}`);
+      break;
+    case "config_validate::merge_key_error":
+      Notice.error(`${t("Merge File Key Error")} ${msg}`);
+      break;
+    case "config_validate::merge_error":
+      Notice.error(`${t("Merge File Error")} ${msg}`);
+      break;
     case "config_core::change_success":
       Notice.success(`${t("Core Changed Successfully")}: ${msg}`);
       break;
@@ -100,6 +129,8 @@ const Layout = () => {
   const { t } = useTranslation();
   const { theme } = useCustomTheme();
   const { verge } = useVerge();
+  const { clashInfo } = useClashInfo();
+  const [enableLog] = useEnableLog();
   const { language, start_page } = verge ?? {};
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,6 +145,15 @@ const Layout = () => {
     [t, navigate],
   );
 
+  // 初始化全局日志服务
+  useEffect(() => {
+    if (clashInfo) {
+      const { server = "", secret = "" } = clashInfo;
+      // 使用本地存储中的enableLog值初始化全局日志服务
+      initGlobalLogService(server, secret, enableLog, "info");
+    }
+  }, [clashInfo, enableLog]);
+
   // 设置监听器
   useEffect(() => {
     const listeners = [
@@ -127,9 +167,12 @@ const Layout = () => {
       }),
 
       // verge 配置更新监听
-      addListener("verge://refresh-verge-config", () =>
-        mutate("getVergeConfig"),
-      ),
+      addListener("verge://refresh-verge-config", () => {
+        mutate("getVergeConfig");
+        // 添加对系统代理状态的刷新
+        mutate("getSystemProxy");
+        mutate("getAutotemProxy");
+      }),
 
       // 通知消息监听
       addListener("verge://notice-message", ({ payload }) =>
@@ -203,12 +246,14 @@ const Layout = () => {
           }}
           sx={[
             ({ palette }) => ({ bgcolor: palette.background.paper }),
-            {
-              borderRadius: "8px",
-              border: "2px solid var(--divider-color)",
-              width: "calc(100vw - 4px)",
-              height: "calc(100vh - 4px)",
-            },
+            OS === "linux"
+              ? {
+                  borderRadius: "8px",
+                  border: "1px solid var(--divider-color)",
+                  width: "calc(100vw - 0px)",
+                  height: "calc(100vh - 0px)",
+                }
+              : {},
           ]}
         >
           <div className="layout__left">

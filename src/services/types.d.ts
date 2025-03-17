@@ -42,6 +42,31 @@ interface IConfigData {
     "strict-route": boolean;
     mtu: number;
   };
+  dns?: {
+    enable?: boolean;
+    listen?: string;
+    "enhanced-mode"?: "fake-ip" | "redir-host";
+    "fake-ip-range"?: string;
+    "fake-ip-filter"?: string[];
+    "fake-ip-filter-mode"?: "blacklist" | "whitelist";
+    "prefer-h3"?: boolean;
+    "respect-rules"?: boolean;
+    nameserver?: string[];
+    fallback?: string[];
+    "default-nameserver"?: string[];
+    "proxy-server-nameserver"?: string[];
+    "direct-nameserver"?: string[];
+    "direct-nameserver-follow-policy"?: boolean;
+    "nameserver-policy"?: Record<string, any>;
+    "use-hosts"?: boolean;
+    "use-system-hosts"?: boolean;
+    "fallback-filter"?: {
+      geoip?: boolean;
+      "geoip-code"?: string;
+      ipcidr?: string[];
+      domain?: string[];
+    };
+  };
 }
 
 interface IRuleItem {
@@ -693,8 +718,13 @@ interface IProxyConfig
 interface IVergeConfig {
   app_log_level?: "trace" | "debug" | "info" | "warn" | "error" | string;
   language?: string;
-  tray_event?: "main_window" | "system_proxy" | "tun_mode" | string;
-  env_type?: "bash" | "cmd" | "powershell" | string;
+  tray_event?:
+    | "main_window"
+    | "tray_menu"
+    | "system_proxy"
+    | "tun_mode"
+    | string;
+  env_type?: "bash" | "cmd" | "powershell" | "fish" | string;
   startup_script?: string;
   start_page?: string;
   clash_core?: string;
@@ -714,6 +744,7 @@ interface IVergeConfig {
   enable_silent_start?: boolean;
   enable_system_proxy?: boolean;
   enable_global_hotkey?: boolean;
+  enable_dns_settings?: boolean;
   proxy_auto_config?: boolean;
   pac_file_content?: string;
   enable_random_port?: boolean;
@@ -756,6 +787,7 @@ interface IVergeConfig {
   webdav_url?: string;
   webdav_username?: string;
   webdav_password?: string;
+  home_cards?: Record<string, boolean>;
 }
 
 interface IWebDavFile {

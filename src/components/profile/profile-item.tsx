@@ -204,6 +204,7 @@ export const ProfileItem = (props: Props) => {
 
     try {
       await updateProfile(itemData.uid, option);
+      Notice.success(t("Update subscription successfully"));
       mutate("getProfiles");
     } catch (err: any) {
       const errmsg = err?.message || err.toString();
