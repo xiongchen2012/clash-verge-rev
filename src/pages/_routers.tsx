@@ -8,6 +8,7 @@ import HomePage from "./home";
 import UnlockPage from "./unlock";
 import { BaseErrorBoundary } from "@/components/base";
 
+import HomeSvg from "@/assets/image/itemicon/home.svg?react";
 import ProxiesSvg from "@/assets/image/itemicon/proxies.svg?react";
 import ProxiesSvg2 from "@/assets/image/itemicon/proxies2.svg?react";
 import ProfilesSvg from "@/assets/image/itemicon/profiles.svg?react";
@@ -17,10 +18,9 @@ import ConnectionsSvg2 from "@/assets/image/itemicon/connections2.svg?react";
 import RulesSvg from "@/assets/image/itemicon/rules.svg?react";
 import RulesSvg2 from "@/assets/image/itemicon/rules2.svg?react";
 import LogsSvg from "@/assets/image/itemicon/logs.svg?react";
+import UnlockSvg from "@/assets/image/itemicon/unlock.svg?react";
 import SettingsSvg from "@/assets/image/itemicon/settings.svg?react";
 import SettingsSvg2 from "@/assets/image/itemicon/settings2.svg?react";
-import HomeSvg from "@/assets/image/itemicon/home.svg?react";
-import UnlockSvg from "@/assets/image/itemicon/unlock.svg?react";
 
 import SubjectRoundedIcon from "@mui/icons-material/SubjectRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
