@@ -6,7 +6,7 @@ use crate::{
     // cmds,
     config::Config,
     feat,
-    module::{lightweight::entry_lightweight_mode, mihomo::Rate},
+    module::mihomo::Rate,
     resolve,
     utils::{dirs, i18n::t, resolve::VERSION},
 };
@@ -533,15 +533,6 @@ fn create_tray_menu(
     )
     .unwrap();
 
-    let lighteweight_mode = &MenuItem::with_id(
-        app_handle,
-        "entry_lightweight_mode",
-        t("LightWeight Mode"),
-        true,
-        hotkeys.get("entry_lightweight_mode").map(|s| s.as_str()),
-    )
-    .unwrap();
-
     let copy_env =
         &MenuItem::with_id(app_handle, "copy_env", t("Copy Env"), true, None::<&str>).unwrap();
 
@@ -638,7 +629,6 @@ fn create_tray_menu(
             system_proxy,
             tun_mode,
             separator,
-            lighteweight_mode,
             copy_env,
             // open_dir,
             // more,
@@ -663,12 +653,6 @@ fn on_menu_event(_: &AppHandle, event: MenuEvent) {
         "system_proxy" => feat::toggle_system_proxy(),
         "tun_mode" => feat::toggle_tun_mode(None),
         "copy_env" => feat::copy_clash_env(),
-        // "open_app_dir" => crate::log_err!(cmds::open_app_dir()),
-        // "open_core_dir" => crate::log_err!(cmds::open_core_dir()),
-        // "open_logs_dir" => crate::log_err!(cmds::open_logs_dir()),
-        // "restart_clash" => feat::restart_clash_core(),
-        // "restart_app" => feat::restart_app(),
-        "entry_lightweight_mode" => entry_lightweight_mode(),
         "restart_all" => {
             feat::restart_clash_core();
             feat::restart_app();
