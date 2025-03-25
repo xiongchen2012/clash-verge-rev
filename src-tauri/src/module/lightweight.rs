@@ -5,7 +5,7 @@ use tauri::{Listener, Manager};
 use crate::{
     config::Config,
     core::{handle, timer::Timer},
-    log_err,
+    log_err, AppHandleManager,
 };
 
 const LIGHT_WEIGHT_TASK_UID: &str = "light_weight_task";
@@ -26,12 +26,16 @@ pub fn disable_auto_light_weight_mode() {
 
 pub fn entry_lightweight_mode() {
     if let Some(window) = handle::Handle::global().get_window() {
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
+        }
         if let Some(webview) = window.get_webview_window("main") {
             let _ = webview.destroy();
-            let _ = window.hide();
-            println!("[lightweight_mode] 轻量模式已开启");
-            log::info!(target: "app", "[lightweight_mode] 轻量模式已开启");
         }
+        #[cfg(target_os = "macos")]
+        AppHandleManager::global().set_activation_policy_accessory();
+        println!("[lightweight_mode] 轻量模式已开启");
+        log::info!(target: "app", "[lightweight_mode] 轻量模式已开启");
     }
     let _ = cancel_light_weight_timer();
 }

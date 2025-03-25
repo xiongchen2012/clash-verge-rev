@@ -8,14 +8,18 @@ use crate::{
     utils::{dirs, help},
 };
 use anyhow::{bail, Result};
+use fs2::FileExt;
 use once_cell::sync::OnceCell;
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use tauri_plugin_shell::ShellExt;
 use tokio::{sync::Mutex, time::sleep};
 
+use super::service::is_service_running;
+
 #[derive(Debug)]
 pub struct CoreManager {
     running: Arc<Mutex<bool>>,
+    last_check_time: Arc<Mutex<Option<std::time::Instant>>>,
 }
 
 /// 内核运行模式
@@ -34,6 +38,7 @@ impl CoreManager {
         static CORE_MANAGER: OnceCell<CoreManager> = OnceCell::new();
         CORE_MANAGER.get_or_init(|| CoreManager {
             running: Arc::new(Mutex::new(false)),
+            last_check_time: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -50,9 +55,12 @@ impl CoreManager {
         let mut running = self.running.lock().await;
 
         if !*running {
+            println!("[停止内核] 内核未运行");
             log::debug!("core is not running");
             return Ok(());
         }
+
+        println!("[停止内核] 开始停止内核");
 
         // 关闭tun模式
         // Create a JSON object to disable TUN mode
@@ -61,17 +69,22 @@ impl CoreManager {
             "enable": false
             }
         });
+        println!("[停止内核] 禁用TUN模式");
         log::debug!(target: "app", "disable tun mode");
         log_err!(MihomoManager::global().patch_configs(disable).await);
 
         // 服务模式
         if service::check_service().await.is_ok() {
+            println!("[停止内核] 尝试通过服务停止内核");
             log::info!(target: "app", "stop the core by service");
             match service::stop_core_by_service().await {
                 Ok(_) => {
+                    println!("[停止内核] 服务模式下内核停止成功");
                     log::info!(target: "app", "core stopped successfully by service");
                 }
                 Err(err) => {
+                    println!("[停止内核] 服务模式下停止内核失败: {}", err);
+                    println!("[停止内核] 尝试停止可能的sidecar进程");
                     log::warn!(target: "app", "failed to stop core by service: {}", err);
                     // 服务停止失败，尝试停止可能的sidecar进程
                     self.stop_sidecar_process();
@@ -79,22 +92,44 @@ impl CoreManager {
             }
         } else {
             // 如果没有使用服务，尝试停止sidecar进程
+            println!("[停止内核] 服务不可用，尝试停止sidecar进程");
             self.stop_sidecar_process();
         }
 
+        // 释放文件锁
+        println!("[停止内核] 尝试释放文件锁");
+        if let Some(_) = handle::Handle::global().release_core_lock() {
+            println!("[停止内核] 文件锁释放成功");
+            log::info!(target: "app", "released core lock file");
+        } else {
+            println!("[停止内核] 没有文件锁需要释放");
+        }
+
         *running = false;
+        println!("[停止内核] 内核停止完成");
         Ok(())
     }
 
     /// 停止通过sidecar启动的进程
     fn stop_sidecar_process(&self) {
         if let Some(process) = handle::Handle::global().take_core_process() {
+            println!("[停止sidecar] 发现sidecar进程，准备停止");
             log::info!(target: "app", "stopping core process in sidecar mode");
+
+            // 尝试获取进程ID
+            let pid = process.pid();
+            println!("[停止sidecar] 进程PID: {}", pid);
+
+            // 尝试终止进程
             if let Err(e) = process.kill() {
+                println!("[停止sidecar] 终止sidecar进程失败: {}", e);
                 log::warn!(target: "app", "failed to kill core process: {}", e);
             } else {
+                println!("[停止sidecar] sidecar进程已成功终止");
                 log::info!(target: "app", "core process stopped successfully");
             }
+        } else {
+            println!("[停止sidecar] 没有找到sidecar进程");
         }
     }
 
@@ -108,15 +143,17 @@ impl CoreManager {
 
         let config_path = Config::generate_file(ConfigType::Run)?;
 
-        // 先尝试服务模式
-        if service::check_service().await.is_ok() {
+        // 先检查服务状态
+        let service_available = service::check_service().await.is_ok();
+        
+        if service_available {
             log::info!(target: "app", "try to run core in service mode");
             match service::run_core_by_service(&config_path).await {
                 Ok(_) => {
                     log::info!(target: "app", "core started successfully in service mode");
                 }
                 Err(err) => {
-                    // 服务启动失败，尝试sidecar模式
+                    // 服务启动失败，直接尝试sidecar模式，不再尝试重装服务
                     log::warn!(target: "app", "failed to start core in service mode: {}", err);
                     log::info!(target: "app", "trying to run core in sidecar mode");
                     self.run_core_by_sidecar(&config_path).await?;
@@ -143,6 +180,99 @@ impl CoreManager {
         let clash_core = clash_core.unwrap_or("verge-mihomo".into());
 
         log::info!(target: "app", "starting core {} in sidecar mode", clash_core);
+        println!("[sidecar启动] 开始以sidecar模式启动内核: {}", clash_core);
+
+        // 检查系统中是否存在同名进程
+        if let Ok(pids) = self.check_existing_processes(&clash_core).await {
+            if !pids.is_empty() {
+                println!("[sidecar启动] 警告：系统中已存在同名进程");
+                // 尝试检查端口占用
+                if let Ok(config_content) = std::fs::read_to_string(config_path) {
+                    if let Ok(config) = serde_yaml::from_str::<serde_yaml::Value>(&config_content) {
+                        // 获取配置中定义的端口
+                        let mixed_port = config
+                            .get("mixed-port")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(7890);
+                        let http_port = config.get("port").and_then(|v| v.as_u64()).unwrap_or(7890);
+
+                        println!(
+                            "[sidecar启动] 检查端口占用: HTTP端口={}, 混合端口={}",
+                            http_port, mixed_port
+                        );
+
+                        // 检查端口是否被占用
+                        if self.is_port_in_use(mixed_port as u16).await
+                            || self.is_port_in_use(http_port as u16).await
+                        {
+                            println!("[sidecar启动] 端口已被占用，尝试终止已存在的进程");
+
+                            // 尝试终止已存在的进程
+                            for pid in pids {
+                                println!("[sidecar启动] 尝试终止进程 PID: {}", pid);
+                                self.terminate_process(pid).await;
+                            }
+
+                            // 等待短暂时间让资源释放
+                            println!("[sidecar启动] 等待500ms让资源释放");
+                            sleep(Duration::from_millis(500)).await;
+                        }
+                    }
+                }
+            }
+        } else {
+            println!("[sidecar启动] 无法检查系统进程，继续尝试启动");
+        }
+
+        // 创建锁文件路径
+        let lock_file = dirs::app_home_dir()?.join(format!("{}.lock", clash_core));
+        println!("[sidecar启动] 锁文件路径: {:?}", lock_file);
+
+        // 尝试获取文件锁
+        println!("[sidecar启动] 尝试获取文件锁");
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&lock_file)?;
+
+        match file.try_lock_exclusive() {
+            Ok(_) => {
+                // 成功获取锁，说明没有其他实例运行
+                println!("[sidecar启动] 成功获取文件锁，没有检测到其他运行的实例");
+                log::info!(target: "app", "acquired lock for core process");
+
+                // 保存锁对象到全局，防止被Drop
+                handle::Handle::global().set_core_lock(file);
+            }
+            Err(err) => {
+                // 无法获取锁，说明已有实例运行
+                println!("[sidecar启动] 无法获取文件锁，检测到其他实例可能正在运行");
+                println!("[sidecar启动] 错误信息: {:?}", err);
+                log::warn!(target: "app", "another core process appears to be running");
+
+                // 尝试强制获取锁（可能会导致其他进程崩溃）
+                println!("[sidecar启动] 尝试强制删除并重新创建锁文件");
+                std::fs::remove_file(&lock_file)?;
+                let file = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .open(&lock_file)?;
+
+                println!("[sidecar启动] 尝试强制获取锁");
+                match file.lock_exclusive() {
+                    Ok(_) => println!("[sidecar启动] 成功强制获取锁"),
+                    Err(e) => println!("[sidecar启动] 强制获取锁失败: {:?}", e),
+                }
+                file.lock_exclusive()?;
+
+                // 保存新锁
+                handle::Handle::global().set_core_lock(file);
+
+                // 等待可能的其他进程退出
+                println!("[sidecar启动] 等待500ms，让可能的其他进程退出");
+                sleep(Duration::from_millis(500)).await;
+            }
+        }
 
         let app_handle = handle::Handle::global()
             .app_handle()
@@ -153,6 +283,7 @@ impl CoreManager {
         let config_path_str = dirs::path_to_str(config_path)?;
 
         // 启动核心进程并转入后台运行
+        println!("[sidecar启动] 开始启动核心进程");
         let (_, child) = app_handle
             .shell()
             .sidecar(clash_core)?
@@ -160,11 +291,13 @@ impl CoreManager {
             .spawn()?;
 
         // 保存进程ID以便后续管理
+        println!("[sidecar启动] 核心进程启动成功，PID: {:?}", child.pid());
         handle::Handle::global().set_core_process(child);
 
         // 等待短暂时间确保启动成功
         sleep(Duration::from_millis(300)).await;
 
+        println!("[sidecar启动] 内核启动完成");
         log::info!(target: "app", "core started in sidecar mode");
         Ok(())
     }
@@ -176,6 +309,19 @@ impl CoreManager {
         self.stop_core().await?;
         self.start_core().await?;
         log::info!(target: "app", "core restarted successfully");
+        Ok(())
+    }
+
+    /// 强制重新安装服务（供UI调用，用户主动修复服务）
+    pub async fn repair_service(&self) -> Result<()> {
+        log::info!(target: "app", "user requested service repair");
+        
+        // 调用强制重装服务
+        service::force_reinstall_service().await?;
+        
+        // 重启核心
+        self.restart_core().await?;
+        
         Ok(())
     }
 
@@ -537,7 +683,26 @@ impl CoreManager {
 
                 // 5. 应用新配置
                 println!("[core配置更新] 应用新配置");
-                for i in 0..3 {
+                
+                // 检查当前运行模式
+                let running_mode = self.get_running_mode().await;
+                
+                // 使用指数退避策略进行重试
+                let mut retry_count = 0;
+                let max_retries = 3;
+                
+                loop {
+                    // 仅在服务模式下确保服务在运行
+                    match running_mode {
+                        RunningMode::Service => {
+                            println!("[core配置更新] 服务模式下检查服务状态");
+                            self.ensure_running_core().await;
+                        },
+                        _ => {
+                            println!("[core配置更新] 非服务模式，跳过服务状态检查");
+                        }
+                    }
+
                     match MihomoManager::global().put_configs_force(run_path).await {
                         Ok(_) => {
                             println!("[core配置更新] 配置应用成功");
@@ -545,19 +710,21 @@ impl CoreManager {
                             return Ok((true, String::new()));
                         }
                         Err(err) => {
-                            if i < 2 {
-                                println!("[core配置更新] 第{}次重试应用配置", i + 1);
-                                log::info!(target: "app", "{err}");
-                                sleep(Duration::from_millis(100)).await;
+                            retry_count += 1;
+                            if retry_count < max_retries {
+                                // 使用指数退避策略计算下一次重试间隔
+                                let wait_time = 200 * (2_u64.pow(retry_count as u32 - 1));
+                                println!("[core配置更新] 第{}次重试应用配置，等待{}ms", retry_count, wait_time);
+                                log::info!(target: "app", "配置应用失败: {}，将在{}ms后重试", err, wait_time);
+                                sleep(Duration::from_millis(wait_time)).await;
                             } else {
-                                println!("[core配置更新] 配置应用失败: {}", err);
+                                println!("[core配置更新] 已重试{}次，配置应用失败: {}", max_retries, err);
                                 Config::runtime().discard();
                                 return Ok((false, err.to_string()));
                             }
                         }
                     }
                 }
-                Ok((true, String::new()))
             }
             Ok((false, error_msg)) => {
                 println!("[core配置更新] 配置验证失败: {}", error_msg);
@@ -618,7 +785,14 @@ impl CoreManager {
                     _ => {
                         // 服务存在但可能没有运行，检查是否有sidecar进程
                         if handle::Handle::global().has_core_process() {
-                            RunningMode::Sidecar
+                            // 检查是否持有文件锁，确保是由我们启动的进程
+                            if handle::Handle::global().has_core_lock() {
+                                RunningMode::Sidecar
+                            } else {
+                                // 有进程但没有文件锁，可能是外部启动的进程
+                                log::warn!(target: "app", "core process exists but no lock file");
+                                RunningMode::Sidecar // 仍返回Sidecar模式，但记录了警告
+                            }
                         } else {
                             RunningMode::NotRunning
                         }
@@ -628,10 +802,282 @@ impl CoreManager {
             Err(_) => {
                 // 服务不可用，检查是否有sidecar进程
                 if handle::Handle::global().has_core_process() {
-                    RunningMode::Sidecar
+                    // 检查是否持有文件锁，确保是由我们启动的进程
+                    if handle::Handle::global().has_core_lock() {
+                        RunningMode::Sidecar
+                    } else {
+                        // 有进程但没有文件锁，可能是外部启动的进程
+                        log::warn!(target: "app", "core process exists but no lock file");
+                        RunningMode::Sidecar // 仍返回Sidecar模式，但记录了警告
+                    }
                 } else {
                     RunningMode::NotRunning
                 }
+            }
+        }
+    }
+
+    /// 检查系统中是否存在同名进程
+    async fn check_existing_processes(&self, process_name: &str) -> Result<Vec<u32>> {
+        println!("[进程检查] 检查系统中是否存在进程: {}", process_name);
+        
+        #[cfg(target_os = "windows")]
+        {
+            use std::process::Command;
+            
+            println!("[进程检查] Windows系统，使用tasklist命令");
+            let output = Command::new("tasklist")
+                .args(["/FO", "CSV", "/NH"])
+                .output()?;
+                
+            let output = String::from_utf8_lossy(&output.stdout);
+
+            let pids: Vec<u32> = output
+                .lines()
+                .filter(|line| line.contains(process_name))
+                .filter_map(|line| {
+                    println!("[进程检查] 发现匹配行: {}", line);
+                    let parts: Vec<&str> = line.split(',').collect();
+                    if parts.len() >= 2 {
+                        let pid_str = parts[1].trim_matches('"');
+                        pid_str.parse::<u32>().ok().map(|pid| {
+                            println!("[进程检查] 发现进程 PID: {}", pid);
+                            pid
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            println!("[进程检查] 共发现 {} 个相关进程", pids.len());
+            Ok(pids)
+        }
+        
+        #[cfg(target_os = "linux")]
+        {
+            use std::process::Command;
+            
+            println!("[进程检查] Linux系统，使用pgrep命令");
+            let output = Command::new("pgrep")
+                .arg("-f")
+                .arg(process_name)
+                .output()?;
+                
+            let output = String::from_utf8_lossy(&output.stdout);
+
+            let pids: Vec<u32> = output
+                .lines()
+                .filter_map(|line| {
+                    line.trim().parse::<u32>().ok().map(|pid| {
+                        println!("[进程检查] 发现进程 PID: {}", pid);
+                        pid
+                    })
+                })
+                .collect();
+            
+            println!("[进程检查] 共发现 {} 个相关进程", pids.len());
+            Ok(pids)
+        }
+        
+        #[cfg(target_os = "macos")]
+        {
+            use std::process::Command;
+            
+            println!("[进程检查] macOS系统，使用ps命令");
+            let output = Command::new("ps")
+                .args(["-ax", "-o", "pid,command"])
+                .output()?;
+                
+            let output = String::from_utf8_lossy(&output.stdout);
+
+            let pids: Vec<u32> = output
+                .lines()
+                .filter(|line| line.contains(process_name))
+                .filter_map(|line| {
+                    println!("[进程检查] 发现匹配行: {}", line);
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if !parts.is_empty() {
+                        parts[0].parse::<u32>().ok().map(|pid| {
+                            println!("[进程检查] 发现进程 PID: {}", pid);
+                            pid
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            println!("[进程检查] 共发现 {} 个相关进程", pids.len());
+            Ok(pids)
+        }
+    }
+
+    /// 检查端口是否被占用
+    async fn is_port_in_use(&self, port: u16) -> bool {
+        println!("[端口检查] 检查端口 {} 是否被占用", port);
+
+       use tokio::net::TcpSocket;
+
+        match TcpSocket::new_v4() {
+            Ok(socket) => {
+                let addr = format!("127.0.0.1:{}", port).parse().unwrap();
+                match socket.bind(addr) {
+                    Ok(_) => {
+                        // 如果能绑定成功，说明端口未被占用
+                        println!("[端口检查] 端口 {} 未被占用", port);
+                        false
+                    }
+                    Err(_) => {
+                        // 绑定失败，端口已被占用
+                        println!("[端口检查] 端口 {} 已被占用", port);
+                        true
+                    }
+                }
+            }
+            Err(err) => {
+                // 创建socket失败，保守返回端口被占用
+                println!("[端口检查] 创建Socket失败: {:?}, 假设端口已被占用", err);
+                true
+            }
+        }
+    }
+
+    /// 终止进程
+    async fn terminate_process(&self, pid: u32) {
+        println!("[进程终止] 尝试终止进程 PID: {}", pid);
+
+        #[cfg(target_os = "windows")]
+        {
+            use std::process::Command;
+            let output = Command::new("taskkill")
+                .args(["/F", "/PID", &pid.to_string()])
+                .output();
+
+            match output {
+                Ok(output) => {
+                    if output.status.success() {
+                        println!("[进程终止] 成功终止进程 PID: {}", pid);
+                    } else {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        println!("[进程终止] 终止进程失败: {}", stderr);
+                    }
+                }
+                Err(err) => {
+                    println!("[进程终止] 执行终止命令失败: {:?}", err);
+                }
+            }
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            use std::process::Command;
+            let output = Command::new("kill").args(["-9", &pid.to_string()]).output();
+
+            match output {
+                Ok(output) => {
+                    if output.status.success() {
+                        println!("[进程终止] 成功终止进程 PID: {}", pid);
+                    } else {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        println!("[进程终止] 终止进程失败: {}", stderr);
+                    }
+                }
+                Err(err) => {
+                    println!("[进程终止] 执行终止命令失败: {:?}", err);
+                }
+            }
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            use std::process::Command;
+            let output = Command::new("kill").args(["-9", &pid.to_string()]).output();
+
+            match output {
+                Ok(output) => {
+                    if output.status.success() {
+                        println!("[进程终止] 成功终止进程 PID: {}", pid);
+                    } else {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        println!("[进程终止] 终止进程失败: {}", stderr);
+                    }
+                }
+                Err(err) => {
+                    println!("[进程终止] 执行终止命令失败: {:?}", err);
+                }
+            }
+        }
+    }
+    /// 确保 Mihomo 和 Verge service 都在运行
+    pub async fn ensure_running_core(&self) {
+        // 添加时间间隔检查，避免频繁执行
+        let min_check_interval = Duration::from_secs(20); // 最小检查间隔为20秒
+        
+        let should_check = {
+            let mut last_check = self.last_check_time.lock().await;
+            let now = std::time::Instant::now();
+            
+            match *last_check {
+                Some(time) if now.duration_since(time) < min_check_interval => {
+                    // 如果距离上次检查时间不足30秒，跳过本次检查
+                    false
+                },
+                _ => {
+                    // 更新最后检查时间
+                    *last_check = Some(now);
+                    true
+                }
+            }
+        };
+        
+        if !should_check {
+            return;
+        }
+        
+        // 检查当前运行模式，只在服务模式下执行完整的检查
+        match self.get_running_mode().await {
+            RunningMode::Service => {
+                println!("[确保核心运行] 服务模式下检查核心状态");
+                
+                // 检查Mihomo是否运行
+                if MihomoManager::global().is_mihomo_running().await.is_err() {
+                    println!("[确保核心运行] Mihomo未运行，尝试重启");
+                    log_err!(self.restart_core().await);
+                    return; // 已重启，无需继续检查
+                }
+                
+                // 检查服务是否运行
+                match is_service_running().await {
+                    Ok(false) => {
+                        println!("[确保核心运行] 服务未运行，尝试重启");
+                        log_err!(self.restart_core().await);
+                    },
+                    Ok(true) => {
+                        // 服务运行中，再次确认Mihomo状态
+                        if MihomoManager::global().is_mihomo_running().await.is_err() {
+                            println!("[确保核心运行] 服务运行但Mihomo未响应，尝试重启");
+                            log_err!(self.restart_core().await);
+                        } else {
+                            println!("[确保核心运行] 服务和Mihomo都正常运行");
+                        }
+                    },
+                    Err(err) => {
+                        println!("[确保核心运行] 检查服务状态失败: {:?}", err);
+                    }
+                }
+            },
+            RunningMode::Sidecar => {
+                println!("[确保核心运行] Sidecar模式下仅检查Mihomo状态");
+                // 在Sidecar模式下，只检查Mihomo是否运行
+                if MihomoManager::global().is_mihomo_running().await.is_err() {
+                    println!("[确保核心运行] Mihomo未运行，尝试重启");
+                    log_err!(self.restart_core().await);
+                }
+            },
+            RunningMode::NotRunning => {
+                println!("[确保核心运行] 核心未运行，尝试启动");
+                log_err!(self.start_core().await);
             }
         }
     }
