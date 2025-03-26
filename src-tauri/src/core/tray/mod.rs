@@ -658,7 +658,6 @@ fn on_menu_event(_: &AppHandle, event: MenuEvent) {
             feat::restart_app();
         },
         "quit" => {
-            println!("quit");
             feat::quit(Some(0));
         }
         id if id.starts_with("profiles_") => {

@@ -250,8 +250,8 @@ const Layout = () => {
               ? {
                   borderRadius: "8px",
                   border: "1px solid var(--divider-color)",
-                  width: "calc(100vw - 0px)",
-                  height: "calc(100vh - 0px)",
+                  width: "calc(100vw - 4px)",
+                  height: "calc(100vh - 4px)",
                 }
               : {},
           ]}
