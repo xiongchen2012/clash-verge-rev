@@ -133,7 +133,7 @@ export const ClashModeCard = () => {
       </Stack>
 
       {/* 说明文本区域 */}
-      <Box
+      {currentMode && <Box
         sx={{
           width: "100%",
           my: 1,
@@ -150,7 +150,7 @@ export const ClashModeCard = () => {
         >
           {t(`${currentMode} Mode Description`)}
         </Typography>
-      </Box>
+      </Box>}
     </Box>
   );
 };

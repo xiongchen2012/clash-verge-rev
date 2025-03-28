@@ -47,6 +47,11 @@ const parseExpire = (expire?: number) => {
   return dayjs(expire * 1000).format("YYYY-MM-DD");
 };
 
+const parseExpireRest = (expire?: number) =>{
+  if(!expire) return '';
+  return dayjs(expire * 1000).diff(dayjs(), 'days');
+}
+
 // 使用类型定义，而不是导入
 interface ProfileExtra {
   upload: number;
@@ -82,8 +87,8 @@ const truncateStyle = {
 };
 
 // 提取独立组件减少主组件复杂度
-const ProfileDetails = ({ current, onUpdateProfile, updating }: { 
-  current: ProfileItem; 
+const ProfileDetails = ({ current, onUpdateProfile, updating }: {
+  current: ProfileItem;
   onUpdateProfile: () => void;
   updating: boolean;
 }) => {
@@ -116,7 +121,7 @@ const ProfileDetails = ({ current, onUpdateProfile, updating }: {
                   component="button"
                   fontWeight="medium"
                   onClick={() => current.home && openWebUrl(current.home)}
-                  sx={{ 
+                  sx={{
                     display: "inline-flex",
                     alignItems: "center",
                     minWidth: 0,
@@ -207,6 +212,7 @@ const ProfileDetails = ({ current, onUpdateProfile, updating }: {
                   {t("Expire Time")}:{" "}
                   <Box component="span" fontWeight="medium">
                     {parseExpire(current.extra.expire)}
+                    <span style={{color: '#333'}}>{`（还剩${parseExpireRest(current.extra.expire)}天）`}</span>
                   </Box>
                 </Typography>
               </Stack>
@@ -218,7 +224,7 @@ const ProfileDetails = ({ current, onUpdateProfile, updating }: {
                 color="text.secondary"
                 sx={{ mb: 0.5, display: "block" }}
               >
-                {trafficPercentage}%
+                <span>流量已用：</span>{trafficPercentage}%
               </Typography>
               <LinearProgress
                 variant="determinate"
@@ -240,7 +246,7 @@ const ProfileDetails = ({ current, onUpdateProfile, updating }: {
 // 提取空配置组件
 const EmptyProfile = ({ onClick }: { onClick: () => void }) => {
   const { t } = useTranslation();
-  
+
   return (
     <Box
       sx={{
@@ -272,10 +278,10 @@ export const HomeProfileCard = ({ current, onProfileUpdated }: HomeProfileCardPr
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { refreshAll } = useAppData();
-  
+
   // 更新当前订阅
   const [updating, setUpdating] = useState(false);
-  
+
   const onUpdateProfile = useLockFn(async () => {
     if (!current?.uid) return;
 
@@ -284,7 +290,7 @@ export const HomeProfileCard = ({ current, onProfileUpdated }: HomeProfileCardPr
       await updateProfile(current.uid);
       Notice.success(t("Update subscription successfully"));
       onProfileUpdated?.();
-      
+
       // 刷新首页数据
       refreshAll();
     } catch (err: any) {
@@ -302,9 +308,9 @@ export const HomeProfileCard = ({ current, onProfileUpdated }: HomeProfileCardPr
   // 卡片标题
   const cardTitle = useMemo(() => {
     if (!current) return t("Profiles");
-    
+
     if (!current.home) return current.name;
-    
+
     return (
       <Link
         component="button"
@@ -331,11 +337,11 @@ export const HomeProfileCard = ({ current, onProfileUpdated }: HomeProfileCardPr
         <span>{current.name}</span>
         <LaunchOutlined
           fontSize="inherit"
-          sx={{ 
-            ml: 0.5, 
-            fontSize: "0.8rem", 
+          sx={{
+            ml: 0.5,
+            fontSize: "0.8rem",
             opacity: 0.7,
-            flexShrink: 0 
+            flexShrink: 0
           }}
         />
       </Link>
@@ -345,7 +351,7 @@ export const HomeProfileCard = ({ current, onProfileUpdated }: HomeProfileCardPr
   // 卡片操作按钮
   const cardAction = useMemo(() => {
     if (!current) return null;
-    
+
     return (
       <Button
         variant="outlined"
@@ -367,10 +373,10 @@ export const HomeProfileCard = ({ current, onProfileUpdated }: HomeProfileCardPr
       action={cardAction}
     >
       {current ? (
-        <ProfileDetails 
-          current={current} 
-          onUpdateProfile={onUpdateProfile} 
-          updating={updating} 
+        <ProfileDetails
+          current={current}
+          onUpdateProfile={onUpdateProfile}
+          updating={updating}
         />
       ) : (
         <EmptyProfile onClick={goToProfiles} />
