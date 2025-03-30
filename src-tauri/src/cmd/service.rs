@@ -1,23 +1,20 @@
 use super::CmdResult;
 use crate::{
     core::{service, CoreManager},
-    logging_error,
-    utils::logging::Type,
+    utils::i18n::t,
 };
 
 async fn execute_service_operation(
     service_op: impl std::future::Future<Output = Result<(), impl ToString + std::fmt::Debug>>,
     op_type: &str,
 ) -> CmdResult {
-    if let Err(e) = service_op.await {
-        let emsg = format!("{} {} failed: {:?}", op_type, "service", e);
-        logging_error!(Type::Service, true, "{}", emsg);
-        return Err(emsg);
+    if service_op.await.is_err() {
+        let emsg = format!("{} {} failed", op_type, "Service");
+        return Err(t(emsg.as_str()));
     }
-    if let Err(e) = CoreManager::global().restart_core().await {
-        let emsg = format!("{} {} failed: {:?}", op_type, "core", e);
-        logging_error!(Type::Core, true, "{}", emsg);
-        return Err(emsg);
+    if CoreManager::global().restart_core().await.is_err() {
+        let emsg = format!("{} {} failed", "Restart", "Core");
+        return Err(t(emsg.as_str()));
     }
     Ok(())
 }

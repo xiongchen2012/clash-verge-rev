@@ -148,6 +148,7 @@ impl CoreManager {
     }
     /// 验证运行时配置
     pub async fn validate_config(&self) -> Result<(bool, String)> {
+        logging!(info, Type::Config, true, "生成临时配置文件用于验证");
         let config_path = Config::generate_file(ConfigType::Check)?;
         let config_path = dirs::path_to_str(&config_path)?;
         self.validate_config_internal(config_path).await
@@ -380,19 +381,7 @@ impl CoreManager {
         logging!(info, Type::Config, true, "生成新的配置内容");
         Config::generate().await?;
 
-        // 2. 生成临时文件并进行验证
-        logging!(info, Type::Config, true, "生成临时配置文件用于验证");
-        let temp_config = Config::generate_file(ConfigType::Check)?;
-        let temp_config = dirs::path_to_str(&temp_config)?;
-        logging!(
-            info,
-            Type::Config,
-            true,
-            "临时配置文件路径: {}",
-            temp_config
-        );
-
-        // 3. 验证配置
+        // 2. 验证配置
         match self.validate_config().await {
             Ok((true, _)) => {
                 logging!(info, Type::Config, true, "配置验证通过");
@@ -576,9 +565,11 @@ impl CoreManager {
                         // 安装失败，记录错误并使用sidecar模式
                         logging!(warn, Type::Core, true, "服务安装失败: {}", err);
 
-                        let mut new_state = service::ServiceState::default();
-                        new_state.last_error = Some(err.to_string());
-                        new_state.prefer_sidecar = true; // 标记偏好sidecar模式
+                        let new_state = service::ServiceState {
+                            last_error: Some(err.to_string()),
+                            prefer_sidecar: true,
+                            ..Default::default()
+                        };
                         new_state.save()?;
 
                         self.start_core_by_sidecar().await?;
