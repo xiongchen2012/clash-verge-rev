@@ -3,10 +3,10 @@ use tauri::tray::TrayIconBuilder;
 #[cfg(target_os = "macos")]
 pub mod speed_rate;
 use crate::{
-    // cmds,
+    cmd,
     config::Config,
     feat,
-    module::mihomo::Rate,
+    module::{lightweight::entry_lightweight_mode, mihomo::Rate},
     resolve,
     utils::{dirs::find_target_icons, i18n::t, logging::Type, resolve::VERSION},
 };
@@ -205,7 +205,7 @@ impl Tray {
                 match tray_event.as_str() {
                     "system_proxy" => feat::toggle_system_proxy(),
                     "tun_mode" => feat::toggle_tun_mode(None),
-                    "main_window" => resolve::create_window(),
+                    "main_window" => resolve::create_window(true),
                     _ => {}
                 }
             }
@@ -681,7 +681,7 @@ fn on_menu_event(_: &AppHandle, event: MenuEvent) {
             println!("change mode to: {}", mode);
             feat::change_clash_mode(mode.into());
         }
-        "open_window" => resolve::create_window(),
+        "open_window" => resolve::create_window(true),
         "system_proxy" => feat::toggle_system_proxy(),
         "tun_mode" => feat::toggle_tun_mode(None),
         "copy_env" => feat::copy_clash_env(),
