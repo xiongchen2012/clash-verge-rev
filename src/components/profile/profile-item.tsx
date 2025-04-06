@@ -15,7 +15,7 @@ import {
   Menu,
   CircularProgress,
 } from "@mui/material";
-import { RefreshRounded, AirplanemodeActive } from "@mui/icons-material";
+import { RefreshRounded, DragIndicatorRounded } from "@mui/icons-material";
 import { useLoadingCache, useSetLoadingCache } from "@/services/states";
 import {
   viewProfile,
@@ -32,7 +32,6 @@ import parseTraffic from "@/utils/parse-traffic";
 import { ConfirmViewer } from "@/components/profile/confirm-viewer";
 import { open } from "@tauri-apps/plugin-shell";
 import { ProxiesEditorViewer } from "./proxies-editor-viewer";
-import { isNumber } from "lodash-es";
 const round = keyframes`
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -80,7 +79,6 @@ export const ProfileItem = (props: Props) => {
   const from = parseUrl(itemData.url);
   const description = itemData.desc;
   const expire = parseExpire(extra?.expire);
-  const rest = parseRest(extra?.expire);
   const progress = Math.min(
     Math.round(((download + upload) * 100) / (total + 0.01)) + 1,
     100,
@@ -181,17 +179,21 @@ export const ProfileItem = (props: Props) => {
   /// 0 不使用任何代理
   /// 1 使用订阅好的代理
   /// 2 至少使用一个代理，根据订阅，如果没订阅，默认使用系统代理
-  const onUpdate = useLockFn(async (type: 0 | 1 | 2) => {
+  const onUpdate = useLockFn(async (type: 0 | 1 | 2): Promise<void> => {
     setAnchorEl(null);
     setLoadingCache((cache) => ({ ...cache, [itemData.uid]: true }));
 
-    const option: Partial<IProfileOption> = {};
+    // 存储原始设置以便回退后恢复
+    const originalOptions = {
+      with_proxy: itemData.option?.with_proxy,
+      self_proxy: itemData.option?.self_proxy
+    };
 
+    // 根据类型设置初始更新选项
+    const option: Partial<IProfileOption> = {};
     if (type === 0) {
       option.with_proxy = false;
       option.self_proxy = false;
-    } else if (type === 1) {
-      // nothing
     } else if (type === 2) {
       if (itemData.option?.self_proxy) {
         option.with_proxy = false;
@@ -203,14 +205,31 @@ export const ProfileItem = (props: Props) => {
     }
 
     try {
+      // 尝试正常更新
       await updateProfile(itemData.uid, option);
       Notice.success(t("Update subscription successfully"));
       mutate("getProfiles");
     } catch (err: any) {
+      // 更新失败，尝试使用自身代理
       const errmsg = err?.message || err.toString();
-      Notice.error(
-        errmsg.replace(/error sending request for url (\S+?): /, ""),
-      );
+      Notice.info(t("Update failed, retrying with Clash proxy..."));
+
+      try {
+        await updateProfile(itemData.uid, {
+          with_proxy: false,
+          self_proxy: true
+        });
+
+        Notice.success(t("Update with Clash proxy successfully"));
+
+        await updateProfile(itemData.uid, originalOptions);
+        mutate("getProfiles");
+      } catch (retryErr: any) {
+        const retryErrmsg = retryErr?.message || retryErr.toString();
+        Notice.error(
+          `${t("Update failed even with Clash proxy")}: ${retryErrmsg.replace(/error sending request for url (\S+?): /, "")}`,
+        );
+      }
     } finally {
       setLoadingCache((cache) => ({ ...cache, [itemData.uid]: false }));
     }
@@ -324,7 +343,6 @@ export const ProfileItem = (props: Props) => {
           setAnchorEl(event.currentTarget);
           event.preventDefault();
         }}
-        // sx={{ backgroundImage: 'linear-gradient(120deg,#fdfbfb 0%, #ebedee 100%)'} }
       >
         {activating && (
           <Box
@@ -352,11 +370,11 @@ export const ProfileItem = (props: Props) => {
               {...attributes}
               {...listeners}
             >
-              <AirplanemodeActive
+              <DragIndicatorRounded
                 sx={[
-                  { cursor: "cursor", marginLeft: "-6px", fontSize: "20px" },
-                  ({ palette: { success } }) => {
-                    return { color: success.main };
+                  { cursor: "move", marginLeft: "-6px" },
+                  ({ palette: { text } }) => {
+                    return { color: text.primary };
                   },
                 ]}
               />
@@ -365,7 +383,6 @@ export const ProfileItem = (props: Props) => {
             <Typography
               width="calc(100% - 36px)"
               sx={{ fontSize: "18px", fontWeight: "600", lineHeight: "26px" }}
-              style={{ color: "#357a38" }}
               variant="h6"
               component="h2"
               noWrap
@@ -437,19 +454,7 @@ export const ProfileItem = (props: Props) => {
             <span title={t("Used / Total")}>
               {parseTraffic(upload + download)} / {parseTraffic(total)}
             </span>
-            <span title={t("Expire Time")}>
-              {rest && (
-                <span
-                  title={`过期时间：${expire}`}
-                  style={{
-                    color: makeProgressTheme(rest)[1],
-                    paddingLeft: "2px",
-                  }}
-                >
-                  还剩{rest}天
-                </span>
-              )}
-            </span>
+            <span title={t("Expire Time")}>{expire}</span>
           </Box>
         ) : (
           <Box sx={{ ...boxStyle, fontSize: 12, justifyContent: "flex-end" }}>
@@ -459,7 +464,6 @@ export const ProfileItem = (props: Props) => {
         <LinearProgress
           variant="determinate"
           value={progress}
-          color={makeProgressTheme(rest)[0]}
           style={{ opacity: total > 0 ? 1 : 0 }}
         />
       </ProfileBox>
@@ -598,20 +602,3 @@ function parseExpire(expire?: number) {
   if (!expire) return "-";
   return dayjs(expire * 1000).format("YYYY-MM-DD");
 }
-function parseRest(expire?: number) {
-  if (!expire) return null;
-  return dayjs(expire * 1000).diff(dayjs(), "day");
-}
-
-const makeProgressTheme = (
-  rest: number | null,
-): ["primary" | "warning" | "error" | "success", string] => {
-  if (rest == null || !isNumber(rest)) return ["primary", "#fff"];
-  // 当rest大于30时，返回success，10～29时返回warning，小于10时返回'error'
-  if (rest >= 30) {
-    return ["success", "#06943d"];
-  } else if (rest >= 10 && rest < 30) {
-    return ["warning", "#fd8206"];
-  }
-  return ["error", "red"];
-};

@@ -4634,7 +4634,7 @@ snapshots:
 
   '@types/node@20.14.10':
     dependencies:
-      undici-types: 6.19.8
+      undici-types: 5.26.5
     optional: true
 
   '@types/parse-json@4.0.2': {}
@@ -6117,7 +6117,7 @@ snapshots:
 
   typescript@5.8.2: {}
 
-  undici-types@6.19.8:
+  undici-types@5.26.5:
     optional: true
 
   undici@5.28.5:

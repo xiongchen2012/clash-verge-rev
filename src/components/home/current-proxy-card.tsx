@@ -96,7 +96,7 @@ export const CurrentProxyCard = () => {
   const mode = clashConfig?.mode?.toLowerCase() || "rule";
   const isGlobalMode = mode === "global";
   const isDirectMode = mode === "direct";
-  
+
   // 定义状态类型
   type ProxyState = {
     proxyData: {
@@ -130,11 +130,11 @@ export const CurrentProxyCard = () => {
   // 初始化选择的组
   useEffect(() => {
     if (!proxies) return;
-    
+
     // 提取primaryGroupName
     const getPrimaryGroupName = () => {
       if (!proxies?.groups?.length) return "";
-      
+
       // 查找主要的代理组（优先级：包含关键词 > 第一个非GLOBAL组）
       const primaryKeywords = [
         "auto",
@@ -152,9 +152,9 @@ export const CurrentProxyCard = () => {
 
       return primaryGroup?.name || "";
     };
-    
+
     const primaryGroupName = getPrimaryGroupName();
-    
+
     // 根据模式确定初始组
     if (isGlobalMode) {
       setState((prev) => ({
@@ -187,7 +187,7 @@ export const CurrentProxyCard = () => {
   // 监听代理数据变化，更新状态
   useEffect(() => {
     if (!proxies) return;
-    
+
     // 使用函数式更新确保状态更新的原子性
     setState((prev) => {
       // 过滤和格式化组
@@ -198,7 +198,7 @@ export const CurrentProxyCard = () => {
           now: g.now || "",
           all: g.all.map((p: { name: string }) => p.name),
         }));
-      
+
       let newProxy = "";
       let newDisplayProxy = null;
       let newGroup = prev.selection.group;
@@ -567,14 +567,14 @@ export const CurrentProxyCard = () => {
             >
               {isDirectMode
                 ? null
-                : proxyOptions.map((proxy) => {
+                : proxyOptions.map((proxy, index) => {
                     const delayValue = delayManager.getDelayFix(
                       state.proxyData.records[proxy.name],
                       state.selection.group,
                     );
                     return (
                       <MenuItem
-                        key={proxy.name}
+                        key={`${proxy.name}-${index}`}
                         value={proxy.name}
                         sx={{
                           display: "flex",

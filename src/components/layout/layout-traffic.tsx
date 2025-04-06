@@ -174,7 +174,7 @@ export const LayoutTraffic = () => {
     <Box position="relative">
       {trafficGraph && pageVisible && (
         <div
-          style={{ width: "100%", height: 50, marginBottom: 6 }}
+          style={{ width: "100%", height: 60, marginBottom: 6 }}
           onClick={trafficRef.current?.toggleStyle}
         >
           <TrafficGraph ref={trafficRef} />
@@ -204,7 +204,7 @@ export const LayoutTraffic = () => {
           <Typography {...unitStyle}>{downUnit}/s</Typography>
         </Box>
 
-        {/* {displayMemory && (
+        {displayMemory && (
           <Box
             title={t(isDebug ? "Memory Cleanup" : "Memory Usage")}
             {...boxStyle}
@@ -218,7 +218,7 @@ export const LayoutTraffic = () => {
             <Typography {...valStyle}>{inuse}</Typography>
             <Typography {...unitStyle}>{inuseUnit}</Typography>
           </Box>
-        )} */}
+        )}
       </Box>
     </Box>
   );

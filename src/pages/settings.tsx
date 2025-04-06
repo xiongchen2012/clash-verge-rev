@@ -63,13 +63,6 @@ const SettingPage = () => {
       <UpdateViewer ref={updateRef} />
       <BasePage
         title={t("Settings")}
-        subTitle={
-          <span
-            style={{ marginLeft: "8px", fontSize: "14px", fontWeight: "400" }}
-          >
-            {`v${version}`}
-          </span>
-        }
         header={
           <ButtonGroup variant="contained" aria-label="Basic button group">
             {/* <IconButton

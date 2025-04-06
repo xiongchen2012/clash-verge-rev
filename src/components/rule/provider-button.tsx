@@ -16,7 +16,6 @@ import {
   styled,
   useTheme
 } from "@mui/material";
-import { CloudSyncOutlined } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useLockFn } from "ahooks";
 import { ruleProviderUpdate } from "@/services/api";
@@ -37,12 +36,13 @@ interface RuleProviderItem {
 const TypeBox = styled(Box)<{ component?: React.ElementType }>(({ theme }) => ({
   display: "inline-block",
   border: "1px solid #ccc",
-  borderColor: alpha(theme.palette.success.main, 0.5),
-  color: alpha(theme.palette.success.main, 0.8),
-  backgroundColor: alpha(theme.palette.success.main, 0.05),
+  borderColor: alpha(theme.palette.secondary.main, 0.5),
+  color: alpha(theme.palette.secondary.main, 0.8),
   borderRadius: 4,
-  fontSize: 11,
-  padding: "0px 4px",
+  fontSize: 10,
+  marginRight: "4px",
+  padding: "0 2px",
+  lineHeight: 1.25,
 }));
 
 export const ProviderButton = () => {

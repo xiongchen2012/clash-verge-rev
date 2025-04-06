@@ -1,15 +1,6 @@
 import { useMemo, useRef, useState, useCallback } from "react";
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  MenuItem,
-} from "@mui/material";
 import { useLockFn } from "ahooks";
+import { Box, Button, IconButton, MenuItem } from "@mui/material";
 import { Virtuoso } from "react-virtuoso";
 import { useTranslation } from "react-i18next";
 import {
@@ -45,44 +36,6 @@ const initConn: IConnections = {
 
 type OrderFunc = (list: IConnectionsItem[]) => IConnectionsItem[];
 
-export interface ConfirmationDialogRawProps {
-  id: string;
-  keepMounted: boolean;
-  open: boolean;
-  onClose: (value?: string) => void;
-}
-
-function ConfirmationDialogRaw(props: ConfirmationDialogRawProps) {
-  const { onClose, open } = props;
-
-  const handleCancel = () => {
-    onClose();
-  };
-
-  const handleOk = () => {
-    onClose("CLOSE");
-  };
-
-  return (
-    <Dialog
-      sx={{ "& .MuiDialog-paper": { width: "80%", maxHeight: 435 } }}
-      maxWidth="xs"
-      open={open}
-    >
-      <DialogTitle>关闭链接</DialogTitle>
-      <DialogContent>
-        <h3>确定要关闭所有连接吗？</h3>
-      </DialogContent>
-      <DialogActions>
-        <Button autoFocus onClick={handleCancel}>
-          取消
-        </Button>
-        <Button onClick={handleOk}>确定</Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
 const ConnectionsPage = () => {
   const { t } = useTranslation();
   const pageVisible = useVisibility();
@@ -90,7 +43,6 @@ const ConnectionsPage = () => {
   const isDark = theme.palette.mode === "dark";
   const [match, setMatch] = useState(() => (_: string) => true);
   const [curOrderOpt, setOrderOpt] = useState("Default");
-  const [open, setOpen] = useState(false);
 
   // 使用全局数据
   const { connections } = useAppData();
@@ -147,12 +99,7 @@ const ConnectionsPage = () => {
     return [conns];
   }, [displayData, match, curOrderOpt]);
 
-  const onCloseAll = (close?: string) => {
-    if (close === "CLOSE") {
-      closeAllConnections();
-    }
-    setOpen(false);
-  };
+  const onCloseAll = useLockFn(closeAllConnections);
 
   const detailRef = useRef<ConnectionDetailRef>(null!);
 
@@ -223,21 +170,9 @@ const ConnectionsPage = () => {
               <PauseCircleOutlineRounded />
             )}
           </IconButton>
-
-          <Button
-            size="small"
-            variant="contained"
-            onClick={() => setOpen(true)}
-          >
+          <Button size="small" variant="contained" onClick={onCloseAll}>
             <span style={{ whiteSpace: "nowrap" }}>{t("Close All")}</span>
           </Button>
-
-          <ConfirmationDialogRaw
-            id="close_all_connections"
-            keepMounted
-            open={open}
-            onClose={onCloseAll}
-          />
         </Box>
       }
     >

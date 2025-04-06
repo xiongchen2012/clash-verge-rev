@@ -225,6 +225,7 @@ const ProfileDetails = ({ current, onUpdateProfile, updating }: {
                 sx={{ mb: 0.5, display: "block" }}
               >
                 <span>流量已用：</span>{trafficPercentage}%
+                {trafficPercentage}%
               </Typography>
               <LinearProgress
                 variant="determinate"
@@ -246,6 +247,7 @@ const ProfileDetails = ({ current, onUpdateProfile, updating }: {
 // 提取空配置组件
 const EmptyProfile = ({ onClick }: { onClick: () => void }) => {
   const { t } = useTranslation();
+
 
   return (
     <Box

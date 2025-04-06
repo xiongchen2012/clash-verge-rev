@@ -54,13 +54,13 @@ export const EnhancedTrafficGraph = memo(forwardRef<EnhancedTrafficGraphRef>(
     const [timeRange, setTimeRange] = useState<TimeRange>(10);
     const [chartStyle, setChartStyle] = useState<"line" | "area">("area");
     const [displayData, setDisplayData] = useState<DataPoint[]>([]);
-    
+
     // 数据缓冲区
     const dataBufferRef = useRef<DataPoint[]>([]);
 
     // 根据时间范围计算保留的数据点数量
     const getMaxPointsByTimeRange = useCallback(
-      (minutes: TimeRange): number => minutes * 30,
+      (minutes: TimeRange): number => minutes * 60,
       []
     );
 
@@ -118,7 +118,7 @@ export const EnhancedTrafficGraph = memo(forwardRef<EnhancedTrafficGraphRef>(
       );
 
       dataBufferRef.current = initialBuffer;
-      
+
       // 更新显示数据
       const pointsToShow = getMaxPointsByTimeRange(timeRange);
       setDisplayData(initialBuffer.slice(-pointsToShow));
@@ -151,7 +151,7 @@ export const EnhancedTrafficGraph = memo(forwardRef<EnhancedTrafficGraphRef>(
       // 更新缓冲区，保持原数组大小
       const newBuffer = [...dataBufferRef.current.slice(1), newPoint];
       dataBufferRef.current = newBuffer;
-      
+
       // 更新显示数据
       const pointsToShow = getMaxPointsByTimeRange(timeRange);
       setDisplayData(newBuffer.slice(-pointsToShow));
@@ -268,7 +268,7 @@ export const EnhancedTrafficGraph = memo(forwardRef<EnhancedTrafficGraphRef>(
                   itemStyle={{ color: colors.text }}
                   isAnimationActive={false}
                 />
-                
+
                 {/* 可点击的时间范围标签 */}
                 <text
                   x="1%"
@@ -282,7 +282,7 @@ export const EnhancedTrafficGraph = memo(forwardRef<EnhancedTrafficGraphRef>(
                 >
                   {getTimeRangeText()}
                 </text>
-                
+
                 {/* 上传标签 - 右上角 */}
                 <text
                   x="99%"

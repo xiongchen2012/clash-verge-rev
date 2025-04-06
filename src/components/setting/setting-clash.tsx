@@ -1,8 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TextField, Select, MenuItem, Typography, Link } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-
+import { TextField, Select, MenuItem, Typography } from "@mui/material";
 import {
   SettingsRounded,
   ShuffleRounded,
@@ -59,7 +57,7 @@ const SettingClash = ({ onError }: Props) => {
     // 如果没有保存的状态，则从verge配置中获取
     return verge?.enable_dns_settings ?? false;
   });
-  
+
   const { addListener } = useListen();
 
   const webRef = useRef<DialogRef>(null);
@@ -85,8 +83,6 @@ const SettingClash = ({ onError }: Props) => {
     }
   };
 
-  // 跳由
-  const navigate = useNavigate();
   // 实现DNS设置开关处理函数
   const handleDnsToggle = useLockFn(async (enable: boolean) => {
     try {
@@ -218,12 +214,6 @@ const SettingClash = ({ onError }: Props) => {
             <MenuItem value="silent">Silent</MenuItem>
           </Select>
         </GuardState>
-        <Link
-          style={{ fontSize: 12, marginLeft: "4px", cursor: "pointer" }}
-          onClick={() => navigate("/logs")}
-        >
-          {t("View Log")}
-        </Link>
       </SettingItem>
 
       <SettingItem
