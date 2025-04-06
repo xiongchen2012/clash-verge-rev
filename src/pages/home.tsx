@@ -25,6 +25,7 @@ import {
   HelpOutlineRounded,
   HistoryEduOutlined,
 } from "@mui/icons-material";
+import ProxySvg from '@/assets/image/itemicon/proxy.svg?react'
 import { useNavigate } from "react-router-dom";
 import { ProxyTunCard } from "@/components/home/proxy-tun-card";
 import { ClashModeCard } from "@/components/home/clash-mode-card";
@@ -33,11 +34,12 @@ import { useState } from "react";
 import { HomeProfileCard } from "@/components/home/home-profile-card";
 import { EnhancedCard } from "@/components/home/enhanced-card";
 import { CurrentProxyCard } from "@/components/home/current-proxy-card";
-import { BasePage } from "@/components/base";
+import { BasePage, Notice } from "@/components/base";
 import { ClashInfoCard } from "@/components/home/clash-info-card";
 import { SystemInfoCard } from "@/components/home/system-info-card";
 import { useLockFn } from "ahooks";
 import {
+  copyClashEnv,
   entry_lightweight_mode,
   openWebUrl,
   patchVergeConfig,
@@ -257,12 +259,22 @@ export const HomePage = () => {
     setHomeCards(newCards);
   };
 
+  // 新增：打开设置弹窗
+  const copyProxyCmdLine = async () => {
+    await copyClashEnv();
+    Notice.success(t("Copy Success"), 1000);
+  };
   return (
     <BasePage
       title={t("Label-Home")}
       contentStyle={{ padding: 2 }}
       header={
         <Box sx={{ display: "flex", alignItems: "center" }}>
+          <Tooltip title={"复制代理命令"} arrow>
+            <IconButton onClick={copyProxyCmdLine} size="small" color="inherit" >
+              <ProxySvg style={{ fontSize: 12 }} />
+            </IconButton>
+          </Tooltip>
           <Tooltip title={t("LightWeight Mode")} arrow>
             <IconButton
               onClick={async () => await entry_lightweight_mode()}
