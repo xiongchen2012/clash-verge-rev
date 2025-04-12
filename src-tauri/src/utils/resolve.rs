@@ -5,6 +5,7 @@ use crate::{
     core::*,
     logging, logging_error,
     module::lightweight,
+    process::AsyncHandler,
     utils::{error, init, logging::Type, server},
     wrap_err,
 };
@@ -150,8 +151,6 @@ pub fn create_window(is_showup: bool) {
         return;
     }
 
-    logging!(info, Type::Window, true, "Creating new application window");
-
     #[cfg(target_os = "windows")]
     let window = tauri::WebviewWindowBuilder::new(
                 &app_handle,
@@ -211,7 +210,7 @@ pub fn create_window(is_showup: bool) {
 
             // 标记前端UI已准备就绪，向前端发送启动完成事件
             let app_handle_clone = app_handle.clone();
-            tauri::async_runtime::spawn(async move {
+            AsyncHandler::spawn(move || async move {
                 use tauri::Emitter;
 
                 logging!(info, Type::Window, true, "UI gets ready.");
