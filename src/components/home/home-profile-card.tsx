@@ -224,7 +224,7 @@ const ProfileDetails = ({ current, onUpdateProfile, updating }: {
                 color="text.secondary"
                 sx={{ mb: 0.5, display: "block" }}
               >
-                <span>流量已用：</span>{trafficPercentage}%
+                <span>流量已用：</span>
                 {trafficPercentage}%
               </Typography>
               <LinearProgress
