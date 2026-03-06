@@ -56,6 +56,8 @@ import { navItems } from './_routers'
 
 import 'dayjs/locale/ru'
 import 'dayjs/locale/zh-cn'
+import { copyClashEnv } from "@/services/cmds";
+import { showNotice } from "@/services/notice-service";
 
 export const portableFlag = false
 
@@ -236,6 +238,15 @@ const Layout = () => {
     }
   }, [language, switchLanguage])
 
+
+  const onCopyClashEnv = useCallback(async () => {
+    await copyClashEnv();
+    showNotice.success(
+      "shared.feedback.notifications.common.copySuccess",
+      1000,
+    );
+  }, []);
+
   if (!themeReady) {
     return (
       <div
@@ -331,10 +342,12 @@ const Layout = () => {
                 <div
                   data-tauri-drag-region="true"
                   style={{
-                    height: '27px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
+                    height: "27px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    cursor: 'pointer',
                   }}
+                  onClick={onCopyClashEnv}
                 >
                   <SvgIcon
                     component={isDark ? iconDark : iconLight}
