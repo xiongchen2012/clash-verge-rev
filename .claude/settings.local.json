@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo tree:*)",
+      "Bash(cargo check:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(curl -x http://127.0.0.1:7897 -o /dev/null -s -w \"Apple:  %{time_total}s \\(DNS: %{time_namelookup}s, Connect: %{time_connect}s, TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0\" --max-time 10 https://www.apple.com)",
+      "Bash(curl -x http://127.0.0.1:7897 -o /dev/null -s -w \"GitHub: %{time_total}s \\(DNS: %{time_namelookup}s, Connect: %{time_connect}s, TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0\" --max-time 10 https://www.github.com)",
+      "Bash(curl -x http://127.0.0.1:7897 -o /dev/null -s -w \"Google: %{time_total}s \\(DNS: %{time_namelookup}s, Connect: %{time_connect}s, TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0\" --max-time 10 https://www.google.com)",
+      "Bash(curl -x http://127.0.0.1:7897 -o /dev/null -s -w \"YouTube:%{time_total}s \\(DNS: %{time_namelookup}s, Connect: %{time_connect}s, TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0\" --max-time 10 https://www.youtube.com)",
+      "Bash(curl -x http://127.0.0.1:7897 -o /dev/null -s -w \"Apple  1st: %{time_total}s \\(TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" https://www.apple.com --next -x http://127.0.0.1:7897 -o /dev/null -s -w \"Apple  2nd: %{time_total}s \\(TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" https://www.apple.com)",
+      "Bash(curl -x http://127.0.0.1:7897 -o /dev/null -s -w \"GitHub 1st: %{time_total}s \\(TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" https://www.github.com --next -x http://127.0.0.1:7897 -o /dev/null -s -w \"GitHub 2nd: %{time_total}s \\(TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" https://www.github.com)",
+      "Bash(curl -x http://127.0.0.1:7897 -o /dev/null -s -w \"Google 1st: %{time_total}s \\(TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" https://www.google.com --next -x http://127.0.0.1:7897 -o /dev/null -s -w \"Google 2nd: %{time_total}s \\(TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" https://www.google.com)",
+      "Bash(curl -x http://127.0.0.1:7897 -o /dev/null -s -w \"YouTube 1st: %{time_total}s \\(TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" https://www.youtube.com --next -x http://127.0.0.1:7897 -o /dev/null -s -w \"YouTube 2nd: %{time_total}s \\(TLS: %{time_appconnect}s, TTFB: %{time_starttransfer}s\\)\\\\n\" https://www.youtube.com)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(curl -s -L -o /tmp/gemini_response.txt -w \"%{http_code}\" \"https://gemini.google.com\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(grep -oE ',2,1,200,\"\"\"\"[A-Z]{3}\"\"\"\"' /tmp/gemini_response.txt)",
+      "Bash(curl -s -L -w \"\\\\n%{http_code}\\\\n%{url_effective}\" \"https://gemini.google.com/app\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\" -o /tmp/gemini_app.txt)",
+      "Bash(curl -s \"https://gemini.google.com/cdn-cgi/trace\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Bash(curl -s -L -o /tmp/gemini_blocked.txt \"https://gemini.google.com\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s -L -o /tmp/gemini_unblocked.txt -x \"http://127.0.0.1:7897\" \"https://gemini.google.com\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0.0.0 Safari/537.36\")"
+    ]
+  }
+}
